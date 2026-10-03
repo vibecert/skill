@@ -4,7 +4,9 @@ import unittest.mock
 import pytest
 import pytest_mock
 
-from vibecert.vibecert import Cli
+from tests.conftest import evidence_of
+from vibecert.collector import EvidenceCollector
+from vibecert.vibecert import Cli, MetricsCli
 
 
 class TestCli:
@@ -25,3 +27,33 @@ class TestCli:
 
     def test_parser_defaults_returns_current_directory(self) -> None:
         assert Cli._parser().parse_args([]).repo == "."
+
+
+class TestMetricsCli:
+    def test_load_matching_schema_returns_evidence(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            pathlib.Path,
+            "read_text",
+            return_value=evidence_of([]).model_dump_json(),
+        )
+        assert MetricsCli._load(pathlib.Path("/bundle.json")).schema_version == (
+            EvidenceCollector.SCHEMA
+        )
+
+    def test_load_unknown_schema_raises(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        bundle = evidence_of([])
+        bundle.schema_version = "vibecert/evidence@99"
+        mocker.patch.object(
+            pathlib.Path, "read_text", return_value=bundle.model_dump_json()
+        )
+        with pytest.raises(ValueError):
+            MetricsCli._load(pathlib.Path("/bundle.json"))
+
+    def test_parser_bundle_argument_returns_path(self) -> None:
+        assert MetricsCli._parser().parse_args(["/bundle.json"]).bundle == (
+            "/bundle.json"
+        )

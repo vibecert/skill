@@ -5,7 +5,6 @@ import pytest_mock
 
 from vibecert.collector import EvidenceCollector
 from vibecert.git_repository import GitRepository
-from vibecert.json_values import Json
 from vibecert.transcript import TranscriptStore
 
 
@@ -25,17 +24,17 @@ class TestEvidenceCollector:
     def test_collect_branch_evidence_returns_schema(
         self, collector: EvidenceCollector
     ) -> None:
-        assert collector.collect()["schema"] == EvidenceCollector.SCHEMA
+        assert collector.collect().schema_version == EvidenceCollector.SCHEMA
 
     def test_collect_branch_evidence_returns_diff_totals(
         self, collector: EvidenceCollector
     ) -> None:
-        assert Json.as_dict(collector.collect()["diff"])["added"] == 2
+        assert collector.collect().diff.added == 2
 
     def test_collect_no_sessions_returns_zero_activity(
         self, collector: EvidenceCollector
     ) -> None:
-        assert Json.as_dict(collector.collect()["activity"])["human_messages"] == 0
+        assert collector.collect().activity.human_messages == 0
 
     def test_existing_missing_paths_returns_only_real_files(self) -> None:
         assert (

@@ -92,6 +92,15 @@ class GitRepository:
         """
         return self._try_run("remote", "get-url", "origin")
 
+    def get_tracked_files(self) -> list[str]:
+        """Return every file Git tracks.
+
+        Returns:
+            list[str]: Repository-relative paths.
+
+        """
+        return self._try_run("ls-files").splitlines()
+
     def get_commit_time(self, sha: str) -> str:
         """Return when a commit was authored.
 
@@ -121,6 +130,19 @@ class GitRepository:
             ).splitlines()
             if path
         }
+
+    @staticmethod
+    def read_lines(path: pathlib.Path) -> list[str]:
+        """Return a file's lines, tolerating one that cannot be read.
+
+        Args:
+            path (pathlib.Path): The file to read.
+
+        Returns:
+            list[str]: The lines, or an empty list when the file is unreadable.
+
+        """
+        return GitRepository._read_lines(path)
 
     @staticmethod
     def _read_lines(path: pathlib.Path) -> list[str]:

@@ -5,6 +5,16 @@ import unittest.mock
 import pytest
 import pytest_mock
 
+from vibecert.bundle_types import (
+    ActivityInfo,
+    AttributionInfo,
+    BranchInfo,
+    DiffInfo,
+    Evidence,
+    FileInfo,
+    RepositoryInfo,
+    WindowInfo,
+)
 from vibecert.git_repository import GitRepository
 
 
@@ -42,3 +52,71 @@ def git_mocks(mocker: pytest_mock.MockerFixture) -> GitMocks:
 @pytest.fixture
 def repository(git_mocks: GitMocks) -> GitRepository:
     return GitRepository(pathlib.Path("/repo"))
+
+
+def evidence_of(
+    files: list[FileInfo],
+    bash_commands: list[str] | None = None,
+    check_configs: dict[str, list[str]] | None = None,
+    comment_density: float = 0.0,
+) -> Evidence:
+    return Evidence(
+        schema_version="vibecert/evidence@1",
+        collected_at="2026-01-01T00:00:00+00:00",
+        repository=RepositoryInfo(
+            root="/repo", name="repo", remote="", comment_density=comment_density
+        ),
+        branch=BranchInfo(
+            name="feat/foo",
+            base="main",
+            merge_base="abc123",
+            commits=[],
+            includes_uncommitted=False,
+            window=WindowInfo(start="2026-01-01", end="2026-01-02"),
+        ),
+        diff=DiffInfo(
+            files=files,
+            added=sum(file.added for file in files),
+            removed=0,
+            changed=sum(file.added for file in files),
+        ),
+        sessions=[],
+        prompts=[],
+        attribution=AttributionInfo(
+            added=0,
+            generated=0,
+            human=0,
+            generative_proportion=0.0,
+            touched=0,
+            touched_proportion=0.0,
+        ),
+        activity=ActivityInfo(
+            human_messages=0,
+            tool_counts={},
+            bash_commands=bash_commands or [],
+            guidelines_in_context=[],
+            check_configs=check_configs or {},
+        ),
+    )
+
+
+def file_of(
+    path: str,
+    suffix: str,
+    added: int = 0,
+    human: int = 0,
+    touched: bool = True,
+    comments: int = 0,
+    code: int = 0,
+) -> FileInfo:
+    return FileInfo(
+        path=path,
+        suffix=suffix,
+        added=added,
+        removed=0,
+        generated=added - human,
+        human=human,
+        touched=touched,
+        comments=comments,
+        code=code,
+    )

@@ -1,9 +1,12 @@
 import argparse
+import dataclasses
 import json
 import pathlib
 
+from vibecert.bundle_types import Evidence
 from vibecert.collector import EvidenceCollector
 from vibecert.git_repository import GitRepository
+from vibecert.metrics import DeterministicMetrics
 from vibecert.transcript import TranscriptStore
 
 
@@ -15,15 +18,14 @@ class Cli:
         """Collect evidence for a branch and write it as JSON."""
         arguments: argparse.Namespace = Cli._parser().parse_args()
         Cli._emit(
-            json.dumps(
-                EvidenceCollector(
-                    GitRepository(pathlib.Path(arguments.repo)),
-                    TranscriptStore(pathlib.Path(arguments.projects)),
-                    arguments.base,
-                    arguments.untracked,
-                ).collect(),
-                indent=1,
-            ),
+            EvidenceCollector(
+                GitRepository(pathlib.Path(arguments.repo)),
+                TranscriptStore(pathlib.Path(arguments.projects)),
+                arguments.base,
+                arguments.untracked,
+            )
+            .collect()
+            .model_dump_json(indent=1),
             arguments.out,
         )
 
@@ -45,5 +47,45 @@ class Cli:
             "--projects", default=str(pathlib.Path.home() / ".claude" / "projects")
         )
         parser.add_argument("--untracked", action="store_true")
+        parser.add_argument("--out", default=None)
+        return parser
+
+
+class MetricsCli:
+    """Command line entry point for the metrics that need no judgement."""
+
+    @staticmethod
+    def run() -> None:
+        """Score the deterministic metrics from a collected bundle."""
+        arguments: argparse.Namespace = MetricsCli._parser().parse_args()
+        Cli._emit(
+            json.dumps(
+                [
+                    dataclasses.asdict(band)
+                    for band in DeterministicMetrics(
+                        MetricsCli._load(pathlib.Path(arguments.bundle))
+                    ).get_bands()
+                ],
+                indent=1,
+            ),
+            arguments.out,
+        )
+
+    @staticmethod
+    def _load(path: pathlib.Path) -> Evidence:
+        evidence: Evidence = Evidence.model_validate_json(path.read_text())
+        if evidence.schema_version != EvidenceCollector.SCHEMA:
+            raise ValueError(
+                f"bundle is {evidence.schema_version}, "
+                f"expected {EvidenceCollector.SCHEMA}"
+            )
+        return evidence
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Score the deterministic VibeCert metrics"
+        )
+        parser.add_argument("bundle")
         parser.add_argument("--out", default=None)
         return parser

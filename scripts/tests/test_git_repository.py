@@ -86,3 +86,14 @@ class TestGitRepository:
 
     def test_read_lines_unreadable_path_returns_empty(self) -> None:
         assert GitRepository._read_lines(pathlib.Path("/no/such/file")) == []
+
+
+class TestGitRepositoryFiles:
+    def test_get_tracked_files_repository_files_returns_paths(
+        self, repository: GitRepository, git_mocks: GitMocks
+    ) -> None:
+        git_mocks._run.side_effect = lambda *arguments: "foo.py\nbar.md"
+        assert repository.get_tracked_files() == ["foo.py", "bar.md"]
+
+    def test_read_lines_unreadable_path_returns_empty(self) -> None:
+        assert GitRepository.read_lines(pathlib.Path("/no/such/file")) == []

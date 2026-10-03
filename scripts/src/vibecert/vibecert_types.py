@@ -38,3 +38,19 @@ class SessionSpan:
     path: str
     start: str
     end: str
+
+
+@dataclasses.dataclass
+class CheckClass:
+    name: str
+    suffixes: frozenset[str]
+    configs: dict[str, str]
+    commands: frozenset[str]
+
+
+@dataclasses.dataclass
+class Band:
+    metric: str
+    score: int | None
+    measure: float | None
+    evidence: str
