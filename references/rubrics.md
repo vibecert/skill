@@ -113,9 +113,17 @@ Whether the output was altered rather than accepted as delivered.
 Two things count: lines the author edited by hand, and generated lines revised after a human message that challenged them.
 The second matters as much as the first, because a dialogue that changes the code is evidence of the same review.
 
-Evidence: human-edited lines, and revisions to generated files following a challenging human message.
+Evidence: revisions to generated files following a challenging human message.
 
-Amendment rate is the count of both, over total generated lines.
+Amendment rate is the lines written by those revisions, over total generated lines.
+
+A revision is a second pass over a file that follows something the author said.
+The first write of a file is not one, and neither is a rewrite with no human message between it and the write before it.
+A rewrite produced by a formatter is excluded: it follows a human message as often as not, and reflects no review of the code.
+
+Lines the author typed by hand are not counted, because they cannot be identified.
+Attribution is by subtraction, and a formatter rewriting generated lines after they are generated is indistinguishable from an author editing them.
+On a branch where every line was generated and a formatter ran, subtraction reported a third of the output as hand-written.
 
 | Band | Amendment rate |
 | --- | --- |

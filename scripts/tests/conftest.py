@@ -15,6 +15,7 @@ from vibecert.bundle_types import (
     RepositoryInfo,
     WindowInfo,
 )
+from vibecert.collector import EvidenceCollector
 from vibecert.git_repository import GitRepository
 
 
@@ -59,9 +60,11 @@ def evidence_of(
     bash_commands: list[str] | None = None,
     check_configs: dict[str, list[str]] | None = None,
     comment_density: float = 0.0,
+    revised: int = 0,
+    revised_proportion: float = 0.0,
 ) -> Evidence:
     return Evidence(
-        schema_version="vibecert/evidence@1",
+        schema_version=EvidenceCollector.SCHEMA,
         collected_at="2026-01-01T00:00:00+00:00",
         repository=RepositoryInfo(
             root="/repo", name="repo", remote="", comment_density=comment_density
@@ -83,12 +86,14 @@ def evidence_of(
         sessions=[],
         prompts=[],
         attribution=AttributionInfo(
-            added=0,
+            added=sum(file.added for file in files),
             generated=0,
             human=0,
             generative_proportion=0.0,
-            touched=0,
+            touched=sum(file.added for file in files if file.touched),
             touched_proportion=0.0,
+            revised=revised,
+            revised_proportion=revised_proportion,
         ),
         activity=ActivityInfo(
             human_messages=0,

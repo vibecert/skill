@@ -54,6 +54,8 @@ class AttributionInfo(BaseModel):
     generative_proportion: float
     touched: int
     touched_proportion: float
+    revised: int
+    revised_proportion: float
 
 
 class SessionInfo(BaseModel):

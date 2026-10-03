@@ -13,7 +13,7 @@ class TestLineAttribution:
         "bar.md": FileDiff("bar.md", ["delta"], 0),
     }
     EDITS: typing.ClassVar[list[EditHunk]] = [
-        EditHunk("session", "", "bash", "/repo/foo.py", ["alpha", "beta"], 0)
+        EditHunk("session", "", "bash", "/repo/foo.py", ["alpha", "beta"], 0, "")
     ]
 
     @pytest.fixture

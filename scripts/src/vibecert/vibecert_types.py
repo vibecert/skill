@@ -23,6 +23,7 @@ class EditHunk:
     path: str
     added: list[str]
     removed: int
+    command: str
 
 
 @dataclasses.dataclass

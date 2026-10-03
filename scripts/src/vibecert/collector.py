@@ -18,9 +18,10 @@ from vibecert.bundle_types import (
 )
 from vibecert.comments import CommentCounter
 from vibecert.git_repository import GitRepository
+from vibecert.revisions import RevisionCounter
 from vibecert.rubric import CheckRegistry
 from vibecert.transcript import TranscriptSession, TranscriptStore
-from vibecert.vibecert_types import Commit, FileDiff
+from vibecert.vibecert_types import Commit, EditHunk, FileDiff, Prompt
 
 
 class EvidenceCollector:
@@ -34,7 +35,7 @@ class EvidenceCollector:
 
     """
 
-    SCHEMA: str = "vibecert/evidence@1"
+    SCHEMA: str = "vibecert/evidence@2"
 
     def __init__(
         self,
@@ -62,10 +63,14 @@ class EvidenceCollector:
         sessions: list[TranscriptSession] = self.__store.find_sessions(
             self.__repository.get_root(), self._window_start(merge_base), self._now()
         )
+        edits: list[EditHunk] = [
+            edit for session in sessions for edit in session.get_edits()
+        ]
+        prompts: list[Prompt] = [
+            prompt for session in sessions for prompt in session.get_prompts()
+        ]
         attribution: LineAttribution = LineAttribution(
-            diff,
-            [edit for session in sessions for edit in session.get_edits()],
-            self.__repository.get_root(),
+            diff, edits, self.__repository.get_root()
         )
         return Evidence(
             schema_version=self.SCHEMA,
@@ -82,10 +87,11 @@ class EvidenceCollector:
                     timestamp=prompt.timestamp,
                     text=prompt.text,
                 )
-                for session in sessions
-                for prompt in session.get_prompts()
+                for prompt in prompts
             ],
-            attribution=self._attribution_info(attribution),
+            attribution=self._attribution_info(
+                attribution, RevisionCounter(edits, prompts).count()
+            ),
             activity=self._activity_info(sessions),
         )
 
@@ -161,7 +167,9 @@ class EvidenceCollector:
         )
 
     @staticmethod
-    def _attribution_info(attribution: LineAttribution) -> AttributionInfo:
+    def _attribution_info(
+        attribution: LineAttribution, revised: int
+    ) -> AttributionInfo:
         return AttributionInfo(
             added=attribution.get_added(),
             generated=attribution.get_generated(),
@@ -169,6 +177,12 @@ class EvidenceCollector:
             generative_proportion=attribution.get_proportion(),
             touched=attribution.get_touched(),
             touched_proportion=attribution.get_touched_proportion(),
+            revised=revised,
+            revised_proportion=(
+                round(revised / attribution.get_touched(), LineAttribution.PRECISION)
+                if attribution.get_touched()
+                else 0.0
+            ),
         )
 
     @staticmethod

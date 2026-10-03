@@ -10,30 +10,29 @@ from vibecert.metrics import (
 
 
 class TestAmendmentMetric:
-    @pytest.mark.parametrize("human,expected", [(2, 1), (10, 2), (40, 3)])
-    def test_get_band_amendment_rate_returns_banded_score(
-        self, human: int, expected: int
+    @pytest.mark.parametrize("rate,expected", [(0.02, 1), (0.10, 2), (0.40, 3)])
+    def test_get_band_revision_rate_returns_banded_score(
+        self, rate: float, expected: int
     ) -> None:
         assert (
-            AmendmentMetric(evidence_of([file_of("foo.py", ".py", 100, human)]))
+            AmendmentMetric(
+                evidence_of(
+                    [file_of("foo.py", ".py", 100)],
+                    revised=int(rate * 100),
+                    revised_proportion=rate,
+                )
+            )
             .get_band()
             .score
             == expected
         )
 
-    def test_get_band_untouched_files_excluded_from_rate(self) -> None:
+    def test_get_band_formatter_rewrite_excluded_by_collection(self) -> None:
         assert (
-            AmendmentMetric(
-                evidence_of(
-                    [
-                        file_of("foo.py", ".py", 100, 40),
-                        file_of("bar.py", ".py", 900, 900, False),
-                    ]
-                )
-            )
+            AmendmentMetric(evidence_of([file_of("foo.py", ".py", 100)], revised=0))
             .get_band()
-            .measure
-            == 0.4
+            .score
+            == 1
         )
 
     def test_get_band_no_generated_files_returns_not_applicable(self) -> None:

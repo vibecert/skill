@@ -116,7 +116,9 @@ class TestTranscriptSession:
                     }
                 }
             ],
-        ).get_edits() == [EditHunk("session", "", "bash", "/repo/foo.py", ["alpha"], 1)]
+        ).get_edits() == [
+            EditHunk("session", "", "bash", "/repo/foo.py", ["alpha"], 1, "")
+        ]
 
     def test_get_edits_tool_channel_returns_added_lines(
         self, mocker: pytest_mock.MockerFixture

@@ -154,11 +154,37 @@ class TranscriptSession:
             if isinstance(entry.get("timestamp"), str)
         )
 
+    def _commands_by_id(self) -> dict[str, str]:
+        return {
+            Json.as_text(Json.as_dict(block).get("id")): Json.as_text(
+                Json.as_dict(Json.as_dict(block).get("input")).get("command")
+            )
+            for entry in self.__entries
+            for block in Json.as_list(Json.as_dict(entry.get("message")).get("content"))
+            if Json.as_dict(block).get("type") == "tool_use"
+        }
+
+    def _command_of(self, entry: dict[str, object]) -> str:
+        return next(
+            (
+                self._commands_by_id().get(
+                    Json.as_text(Json.as_dict(block).get("tool_use_id")), ""
+                )
+                for block in Json.as_list(
+                    Json.as_dict(entry.get("message")).get("content")
+                )
+                if Json.as_dict(block).get("type") == "tool_result"
+            ),
+            "",
+        )
+
     def _edits_of(self, entry: dict[str, object]) -> list[EditHunk]:
         result: dict[str, object] = Json.as_dict(entry.get("toolUseResult"))
         timestamp: str = Json.as_text(entry.get("timestamp"))
         if result.get("bashEditDiff"):
-            return self._bash_edits(Json.as_dict(result["bashEditDiff"]), timestamp)
+            return self._bash_edits(
+                Json.as_dict(result["bashEditDiff"]), timestamp, self._command_of(entry)
+            )
         if result.get("structuredPatch") and result.get("filePath"):
             return [
                 self._hunk(
@@ -166,23 +192,32 @@ class TranscriptSession:
                     Json.as_text(result["filePath"]),
                     Json.as_list(result["structuredPatch"]),
                     timestamp,
+                    "",
                 )
             ]
         return []
 
-    def _bash_edits(self, diff: dict[str, object], timestamp: str) -> list[EditHunk]:
+    def _bash_edits(
+        self, diff: dict[str, object], timestamp: str, command: str
+    ) -> list[EditHunk]:
         return [
             self._hunk(
                 "bash",
                 Json.as_text(Json.as_dict(file).get("filePath")),
                 Json.as_list(Json.as_dict(file).get("hunks")),
                 timestamp,
+                command,
             )
             for file in Json.as_list(diff.get("files"))
         ]
 
     def _hunk(
-        self, channel: str, path: str, hunks: list[object], timestamp: str
+        self,
+        channel: str,
+        path: str,
+        hunks: list[object],
+        timestamp: str,
+        command: str,
     ) -> EditHunk:
         return EditHunk(
             self.get_identifier(),
@@ -191,6 +226,7 @@ class TranscriptSession:
             path,
             [line[1:] for line in self._hunk_lines(hunks) if line.startswith("+")],
             sum(1 for line in self._hunk_lines(hunks) if line.startswith("-")),
+            command,
         )
 
     @staticmethod

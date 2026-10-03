@@ -14,9 +14,9 @@ class AmendmentMetric:
     NAME: str = "output_amendments"
 
     def __init__(self, evidence: Evidence) -> None:
-        self.__files: list[FileInfo] = [
-            file for file in evidence.diff.files if file.touched
-        ]
+        self.__revised: int = evidence.attribution.revised
+        self.__touched: int = evidence.attribution.touched
+        self.__rate: float = evidence.attribution.revised_proportion
 
     def get_band(self) -> Band:
         """Return the band, measured over the files the model wrote to.
@@ -25,29 +25,20 @@ class AmendmentMetric:
             Band: The score, the amendment rate, and what placed it there.
 
         """
-        if not self._added():
+        if not self.__touched:
             return Band(self.NAME, None, None, "no generated files on the branch")
         return Band(
             self.NAME,
             self._score(),
-            self._rate(),
-            f"{self._human()} of {self._added()} added lines in generated files "
-            f"were not written by a tool call",
+            self.__rate,
+            f"{self.__revised} of {self.__touched} generated lines were rewritten "
+            f"after the author challenged them",
         )
 
     def _score(self) -> int:
-        if self._rate() < Thresholds.AMENDMENT_LOW:
+        if self.__rate < Thresholds.AMENDMENT_LOW:
             return 1
-        return 2 if self._rate() <= Thresholds.AMENDMENT_HIGH else 3
-
-    def _rate(self) -> float:
-        return round(self._human() / self._added(), 3)
-
-    def _human(self) -> int:
-        return sum(file.human for file in self.__files)
-
-    def _added(self) -> int:
-        return sum(file.added for file in self.__files)
+        return 2 if self.__rate <= Thresholds.AMENDMENT_HIGH else 3
 
 
 class SecondaryToolMetric:
