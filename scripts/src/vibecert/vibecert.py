@@ -11,6 +11,7 @@ from vibecert.evidence import EvidenceProjection
 from vibecert.git_repository import GitRepository
 from vibecert.json_values import Json
 from vibecert.metrics import DeterministicMetrics
+from vibecert.publish import CertificateSite
 from vibecert.render import CertificateMarkdown
 from vibecert.transcript import TranscriptStore
 from vibecert.vibecert_types import Band
@@ -177,4 +178,32 @@ class ScoreCli:
         )
         parser.add_argument("--private", action="store_true")
         parser.add_argument("--out", default=None)
+        return parser
+
+
+class PublishCli:
+    """Command line entry point for writing a certificate into a site."""
+
+    @staticmethod
+    def run() -> None:
+        """Write one certificate's page, score and badge into a site directory."""
+        arguments: argparse.Namespace = PublishCli._parser().parse_args()
+        site: CertificateSite = CertificateSite(
+            CertificateDocument.model_validate_json(
+                pathlib.Path(arguments.certificate).read_text()
+            ),
+            pathlib.Path(arguments.site),
+        )
+        if arguments.index:
+            site.write_index()
+        print(site.write())
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Write a VibeCert certificate into a site directory"
+        )
+        parser.add_argument("certificate")
+        parser.add_argument("site")
+        parser.add_argument("--index", action="store_true")
         return parser

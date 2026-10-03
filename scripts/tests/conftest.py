@@ -16,6 +16,11 @@ from vibecert.bundle_types import (
     RepositoryInfo,
     WindowInfo,
 )
+from vibecert.certificate_types import (
+    CertificateDocument,
+    MetricResult,
+    WeightResult,
+)
 from vibecert.collector import EvidenceCollector
 from vibecert.git_repository import GitRepository
 
@@ -135,4 +140,43 @@ def file_of(
         code=code,
         fan_in=fan_in,
         risk_signals=risk_signals or [],
+    )
+
+
+def certificate_document(
+    score: float | None = 2.3,
+    scored: int = 6,
+    applicable: int = 6,
+    private: bool = False,
+    evidence: str = "specific questions",
+    findings: list[str] | None = None,
+) -> CertificateDocument:
+    return CertificateDocument(
+        schema_version="vibecert/certificate@1",
+        rubrics_version="vibecert/rubrics@1",
+        issued_at="2026-01-01T00:00:00+00:00",
+        identifier="abc1234",
+        private=private,
+        repository=None if private else "repo",
+        branch=None if private else "feat/foo",
+        commits=3,
+        changed_lines=400,
+        generative_proportion=0.99,
+        certified=score is not None,
+        score=score,
+        scored=scored,
+        applicable=applicable,
+        weights=WeightResult(length=2, criticality=3, risk=1, applied=3),
+        metrics=[
+            MetricResult(
+                number=1,
+                name="follow_up_questions",
+                title="Follow-up questions",
+                state="scored",
+                raw=3,
+                adjusted=3,
+                evidence=evidence,
+            )
+        ],
+        findings=findings or [],
     )

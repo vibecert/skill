@@ -15,7 +15,11 @@ class TestSensitiveData:
         [
             ("patient_record = load()", ["personal data referenced"]),
             ("nhs_number = read()", ["personal data referenced"]),
+            ("self.patient.save()", ["personal data referenced"]),
             ("total = one + two", []),
+            ('raise ValueError("no patient found")', []),
+            ("# the patient record is loaded elsewhere", []),
+            ('TERMS = re.compile(r"nhs_?number|patient")', []),
         ],
     )
     def test_scan_added_lines_returns_category_when_named(

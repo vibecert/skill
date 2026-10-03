@@ -145,6 +145,8 @@ class SensitiveData:
         re.IGNORECASE,
     )
 
+    QUOTED: re.Pattern[str] = re.compile(r"""(['"]).*?\1|\#.*|//.*""")
+
     @classmethod
     def scan(cls, lines: list[str]) -> list[str]:
         """Return whether a file's added lines name personal data.
@@ -158,7 +160,7 @@ class SensitiveData:
         """
         return (
             ["personal data referenced"]
-            if any(cls.TERMS.search(line) for line in lines)
+            if any(cls.TERMS.search(cls.QUOTED.sub("", line)) for line in lines)
             else []
         )
 

@@ -52,6 +52,29 @@ not a score.
 
 # Output
 
-- Render the certificate with `<tool> vibecert-score <bundle> <scratch>/judged.json` and print what it returns, unchanged.
+- Build the certificate with `<tool> vibecert-score <bundle> <scratch>/judged.json --format json --out <scratch>/cert.json`, adding `--private` where the repository is private.
+- Write the files to publish with `<tool> vibecert-publish <scratch>/cert.json <scratch>/site`. It prints the directory it wrote, named after the certificate's identifier.
+- Render the same certificate for the terminal with `<tool> vibecert-score <bundle> <scratch>/judged.json` and print what it returns, unchanged.
 - **Important** do not compute the overall score, apply the weights, or reword the evidence yourself. The lookup table and the gate live in the tool so that two runs of the same branch agree.
-- A branch below the certification gate renders as not certified rather than scoring. Print that as it stands.
+
+# Publishing
+
+- Certificates live at `https://vibecert.github.io/<id>`, served from the `vibecert/vibecert.github.io` repository.
+- The site is set up once, not per run: `vibecert-publish ... --index` also writes the root page, which must be pushed before GitHub Pages can be enabled on an empty repository.
+- Add the three files through the GitHub contents API, which only ever touches this certificate's own path. Do not clone the site, and never force push.
+
+```
+id=$(basename <scratch>/site/*)
+for file in index.html score.json badge.json; do
+  path="$id/$file"
+  sha=$(gh api "repos/vibecert/vibecert.github.io/contents/$path" --jq .sha 2>/dev/null)
+  gh api --method PUT "repos/vibecert/vibecert.github.io/contents/$path" \
+    -f message="feat: ${sha:+rescore}${sha:-add} certificate $id" \
+    -f content="$(base64 -w0 <scratch>/site/$id/$file)" \
+    ${sha:+-f sha="$sha"} >/dev/null
+done
+```
+
+- A certificate's identifier is fixed by the repository, branch and merge base, so rescoring the same branch replaces its certificate rather than adding another.
+- Finish by printing the certificate's address, `https://vibecert.github.io/<id>`.
+- **Important** the identifier is all a private repository publishes. Check that `--private` was passed before publishing one, because the page names the repository and branch otherwise.
