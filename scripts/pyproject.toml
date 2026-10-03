@@ -1,0 +1,40 @@
+[project]
+name = "vibecert"
+description = "Evidence collection for VibeCert branch scoring"
+readme = "README.md"
+version = "1.0.0"
+requires-python = ">=3.13"
+license = "MIT"
+authors = [
+    { name = "Martin Chapman" },
+]
+dependencies = []
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "ruff>=0.15.11",
+    "ty>=0.0.0a1",
+]
+[project.scripts]
+vibecert = "vibecert.vibecert:Cli.run"
+[build-system]
+requires = ["uv_build>=0.11.25,<0.13.0"]
+build-backend = "uv_build"
+[tool.uv.build-backend]
+module-name = "vibecert"
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+[tool.coverage.run]
+source = ["src/vibecert"]
+[tool.coverage.report]
+fail_under = 80
+[tool.ruff.lint]
+select = ["E", "F", "I", "D", "ANN"]
+ignore = ["D100", "D104", "D107"]
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"**/*_types.py" = ["D101"]
+[tool.ruff.lint.pydocstyle]
+convention = "google"
