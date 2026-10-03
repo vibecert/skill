@@ -14,16 +14,24 @@ Band `2` is positioned at the observed population norm throughout, so a score re
 
 These terms are used throughout and are not redefined per metric.
 
-Branch under assessment: the commits reachable from `HEAD` but not from the merge base with the branch it was taken from.
+Branch under assessment: the commits reachable from `HEAD` but not from the merge base with the branch it was taken from, together with uncommitted changes to tracked files.
+Untracked files are not part of the branch and are excluded, since output and assets are not meant to be tracked in the first place.
 
 Session: a Claude Code transcript whose working directory matches the repository and whose timestamps fall inside the window bounded by the first and last commit on the branch.
 
 Human message: a transcript entry of type `user` whose `origin.kind` is `human`.
 Hook output, tool results, system reminders and subagent traffic are not human messages and are excluded from every metric.
 
-Generated line: a line in the branch diff attributable to an `Edit`, `Write` or `NotebookEdit` tool call in a session, after reconciliation against the file history snapshots.
+Generated line: a line added by the branch diff whose content a model tool call wrote during a session.
+Edits reach the diff by two channels, the file editing tools and shell commands, the latter recorded in the transcript as a diff of its own.
+File history snapshots are not used: they hold backup filenames rather than content, and are empty in a large share of sessions.
 
-Human-edited line: a line in the branch diff present in a file history snapshot but not attributable to any tool call.
+Human-authored line: an added line in the branch diff that no tool call wrote.
+Attribution is by subtraction, there being no positive record of the author typing.
+
+Touched file: a file in the branch diff that a tool call wrote to at all.
+Line matching understates authorship, because creating a file by shell redirection leaves no recorded diff, and a formatter rewrites generated lines after they are generated.
+Line matching is the finer measure and metric 3 needs it; the certification gate uses touched lines, which are coarser but hold up.
 
 Guideline: a prose rule the author wrote, which no tool enforces.
 In Claude Code this means the rule files under `~/.claude/rules`, a `CLAUDE.md` at user, project or directory level, and prose convention documents held in the repository such as `CONTRIBUTING.md`.
@@ -228,7 +236,7 @@ How a weight combines with a metric is defined by the lookup table, which is spe
 Not a weight.
 A proportion that decides whether the branch can be certified at all.
 
-Generative proportion is generated lines over total changed lines.
+Generative proportion is added lines in touched files over total added lines.
 
 Below 0.25 the branch is not certified, and the certificate records that rather than a score.
 Metrics written to assess generated code say nothing useful about a branch that is mostly handwritten.
