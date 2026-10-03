@@ -9,6 +9,7 @@ from vibecert.bundle_types import (
     ActivityInfo,
     AttributionInfo,
     BranchInfo,
+    CheckInfo,
     DiffInfo,
     Evidence,
     FileInfo,
@@ -58,7 +59,7 @@ def repository(git_mocks: GitMocks) -> GitRepository:
 def evidence_of(
     files: list[FileInfo],
     bash_commands: list[str] | None = None,
-    check_configs: dict[str, list[str]] | None = None,
+    checks: CheckInfo | None = None,
     comment_density: float = 0.0,
     revised: int = 0,
     revised_proportion: float = 0.0,
@@ -99,8 +100,9 @@ def evidence_of(
             human_messages=0,
             tool_counts={},
             bash_commands=bash_commands or [],
-            guidelines_in_context=[],
-            check_configs=check_configs or {},
+            guidelines=[],
+            checks=checks
+            or CheckInfo(applicable=[], configured=[], ran=[], configs={}),
         ),
     )
 
@@ -113,6 +115,8 @@ def file_of(
     touched: bool = True,
     comments: int = 0,
     code: int = 0,
+    fan_in: int = 0,
+    risk_signals: list[str] | None = None,
 ) -> FileInfo:
     return FileInfo(
         path=path,
@@ -124,4 +128,6 @@ def file_of(
         touched=touched,
         comments=comments,
         code=code,
+        fan_in=fan_in,
+        risk_signals=risk_signals or [],
     )

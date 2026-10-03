@@ -7,19 +7,24 @@ from vibecert.bundle_types import (
     ActivityInfo,
     AttributionInfo,
     BranchInfo,
+    CheckInfo,
     CommitInfo,
     DiffInfo,
     Evidence,
     FileInfo,
+    GuidelineInfo,
     PromptInfo,
     RepositoryInfo,
     SessionInfo,
     WindowInfo,
 )
 from vibecert.comments import CommentCounter
+from vibecert.criticality import FanInCounter
+from vibecert.detection import CheckRegistry
 from vibecert.git_repository import GitRepository
+from vibecert.guidelines import GuidelineIndex
 from vibecert.revisions import RevisionCounter
-from vibecert.rubric import CheckRegistry
+from vibecert.risk import RiskScanner
 from vibecert.transcript import TranscriptSession, TranscriptStore
 from vibecert.vibecert_types import Commit, EditHunk, FileDiff, Prompt
 
@@ -81,18 +86,11 @@ class EvidenceCollector:
             ),
             diff=self._diff_info(diff, attribution),
             sessions=self._session_info(sessions),
-            prompts=[
-                PromptInfo(
-                    session=prompt.session,
-                    timestamp=prompt.timestamp,
-                    text=prompt.text,
-                )
-                for prompt in prompts
-            ],
+            prompts=self._prompt_info(prompts, edits),
             attribution=self._attribution_info(
                 attribution, RevisionCounter(edits, prompts).count()
             ),
-            activity=self._activity_info(sessions),
+            activity=self._activity_info(sessions, list(diff)),
         )
 
     def _repository_info(self) -> RepositoryInfo:
@@ -138,8 +136,12 @@ class EvidenceCollector:
             window=WindowInfo(start=self._window_start(merge_base), end=self._now()),
         )
 
-    @staticmethod
-    def _diff_info(diff: dict[str, FileDiff], attribution: LineAttribution) -> DiffInfo:
+    def _diff_info(
+        self, diff: dict[str, FileDiff], attribution: LineAttribution
+    ) -> DiffInfo:
+        fan_in: FanInCounter = FanInCounter(self._repository_contents())
+        scanner: RiskScanner = RiskScanner(self.__repository.get_root())
+        risk: dict[str, list[str]] = scanner.scan(list(diff))
         return DiffInfo(
             files=[
                 FileInfo(
@@ -156,6 +158,8 @@ class EvidenceCollector:
                     code=CommentCounter.count(
                         file_diff.added, pathlib.PurePath(path).suffix
                     )[1],
+                    fan_in=fan_in.count(path),
+                    risk_signals=risk[path] + scanner.scan_sensitive(file_diff.added),
                 )
                 for path, file_diff in diff.items()
             ],
@@ -165,6 +169,27 @@ class EvidenceCollector:
                 len(file_diff.added) + file_diff.removed for file_diff in diff.values()
             ),
         )
+
+    @staticmethod
+    def _prompt_info(prompts: list[Prompt], edits: list[EditHunk]) -> list[PromptInfo]:
+        ordered: list[Prompt] = sorted(prompts, key=lambda prompt: prompt.timestamp)
+        return [
+            PromptInfo(
+                session=prompt.session,
+                timestamp=prompt.timestamp,
+                text=prompt.text,
+                generated_lines=sum(
+                    len(edit.added)
+                    for edit in edits
+                    if prompt.timestamp < edit.timestamp < next_timestamp
+                ),
+            )
+            for prompt, next_timestamp in zip(
+                ordered,
+                [prompt.timestamp for prompt in ordered[1:]] + ["9999"] * bool(ordered),
+                strict=True,
+            )
+        ]
 
     @staticmethod
     def _attribution_info(
@@ -197,7 +222,17 @@ class EvidenceCollector:
             for session in sessions
         ]
 
-    def _activity_info(self, sessions: list[TranscriptSession]) -> ActivityInfo:
+    def _repository_contents(self) -> dict[str, str]:
+        return {
+            path: "\n".join(
+                GitRepository.read_lines(self.__repository.get_root() / path)
+            )
+            for path in self.__repository.get_tracked_files()
+        }
+
+    def _activity_info(
+        self, sessions: list[TranscriptSession], changed: list[str]
+    ) -> ActivityInfo:
         return ActivityInfo(
             human_messages=sum(len(session.get_prompts()) for session in sessions),
             tool_counts=dict(
@@ -211,7 +246,18 @@ class EvidenceCollector:
                 for session in sessions
                 for command in session.get_bash_commands()
             ],
-            guidelines_in_context=self._existing(
+            guidelines=self._guideline_info(sessions, changed),
+            checks=self._check_info(changed, sessions),
+        )
+
+    def _guideline_info(
+        self, sessions: list[TranscriptSession], changed: list[str]
+    ) -> list[GuidelineInfo]:
+        index: GuidelineIndex = GuidelineIndex(
+            self.__repository.get_root(), pathlib.Path.home() / ".claude" / "rules"
+        )
+        reached: set[str] = set(
+            self._existing(
                 {
                     path
                     for session in sessions
@@ -219,8 +265,55 @@ class EvidenceCollector:
                     | session.get_guidelines_read()
                 },
                 self.__repository.get_root(),
+            )
+        )
+        return [
+            GuidelineInfo(
+                path=str(guideline),
+                applies=guideline in index.get_applicable(changed),
+                in_context=str(guideline) in reached,
+            )
+            for guideline in index.get_available()
+        ]
+
+    def _check_info(
+        self, changed: list[str], sessions: list[TranscriptSession]
+    ) -> CheckInfo:
+        configs: dict[str, list[str]] = self._check_configs()
+        return CheckInfo(
+            applicable=[
+                check.name
+                for check in CheckRegistry.CLASSES
+                if check.suffixes & {pathlib.PurePath(path).suffix for path in changed}
+            ],
+            configured=sorted(
+                {
+                    name
+                    for path, names in configs.items()
+                    if self._governs(path, changed)
+                    for name in names
+                }
             ),
-            check_configs=self._check_configs(),
+            ran=sorted(
+                {
+                    check.name
+                    for check in CheckRegistry.CLASSES
+                    for command in check.commands
+                    if any(
+                        command in invocation
+                        for session in sessions
+                        for invocation in session.get_bash_commands()
+                    )
+                }
+            ),
+            configs=configs,
+        )
+
+    @staticmethod
+    def _governs(config: str, changed: list[str]) -> bool:
+        return any(
+            path.startswith(config.rsplit("/", 1)[0] + "/") or "/" not in config
+            for path in changed
         )
 
     def _check_configs(self) -> dict[str, list[str]]:

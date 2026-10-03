@@ -296,6 +296,12 @@ Reading a local configuration file sits here.
 
 `3`: Credentials or personal data, outbound network calls, shell or SQL assembled from input, or changes to permissions.
 
+Findings come from ruff's implementation of the bandit security ruleset, so the catalogue is maintained elsewhere and grows without this tool changing.
+Assertions are not reported, the rule for them being a finding in shipped code and an idiom in a test suite.
+Coverage is Python only; another language yielding no findings is a gap rather than a statement that the code is safe.
+
+Sensitive data is matched separately, by domain terms, no security tool knowing a given domain's vocabulary.
+
 Identifying high-risk code also serves as a check that nothing harmful was emitted.
 Anything found that way is reported on the certificate regardless of the band.
 

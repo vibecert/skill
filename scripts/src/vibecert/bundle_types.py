@@ -38,6 +38,8 @@ class FileInfo(BaseModel):
     touched: bool
     comments: int
     code: int
+    fan_in: int
+    risk_signals: list[str]
 
 
 class DiffInfo(BaseModel):
@@ -69,14 +71,28 @@ class PromptInfo(BaseModel):
     session: str
     timestamp: str
     text: str
+    generated_lines: int
+
+
+class GuidelineInfo(BaseModel):
+    path: str
+    applies: bool
+    in_context: bool
+
+
+class CheckInfo(BaseModel):
+    applicable: list[str]
+    configured: list[str]
+    ran: list[str]
+    configs: dict[str, list[str]]
 
 
 class ActivityInfo(BaseModel):
     human_messages: int
     tool_counts: dict[str, int]
     bash_commands: list[str]
-    guidelines_in_context: list[str]
-    check_configs: dict[str, list[str]]
+    guidelines: list[GuidelineInfo]
+    checks: CheckInfo
 
 
 class Evidence(BaseModel):

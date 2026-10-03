@@ -1,4 +1,4 @@
-from vibecert.rubric import CheckRegistry
+from vibecert.detection import CheckRegistry
 from vibecert.vibecert_types import EditHunk, Prompt
 
 

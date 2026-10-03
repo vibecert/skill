@@ -1,6 +1,6 @@
 from vibecert.bundle_types import Evidence, FileInfo
-from vibecert.rubric import CheckRegistry, Languages, Thresholds
-from vibecert.vibecert_types import Band, CheckClass
+from vibecert.rubric import Thresholds
+from vibecert.vibecert_types import Band
 
 
 class AmendmentMetric:
@@ -52,13 +52,9 @@ class SecondaryToolMetric:
     NAME: str = "secondary_tools"
 
     def __init__(self, evidence: Evidence) -> None:
-        self.__applicable: tuple[CheckClass, ...] = self._applicable(
-            {file.suffix for file in evidence.diff.files}
-        )
-        self.__configured: set[str] = {
-            name for names in evidence.activity.check_configs.values() for name in names
-        }
-        self.__commands: list[str] = evidence.activity.bash_commands
+        self.__applicable: list[str] = evidence.activity.checks.applicable
+        self.__configured: list[str] = evidence.activity.checks.configured
+        self.__ran: list[str] = evidence.activity.checks.ran
 
     def get_band(self) -> Band:
         """Return the band, judged against the strongest check the diff admits.
@@ -74,40 +70,24 @@ class SecondaryToolMetric:
         return Band(self.NAME, self._score(), None, self._evidence())
 
     def _score(self) -> int:
-        if self._configured(self._highest()) and self._ran(self._highest()):
+        if self._highest() in self.__configured and self._highest() in self.__ran:
             return 3
-        if self._configured(self._highest()) or self._lower_ran():
+        if self._highest() in self.__configured or self._lower_ran():
             return 2
         return 1
 
     def _evidence(self) -> str:
-        return (
-            f"{self._highest().name} checks "
-            f"{'configured' if self._configured(self._highest()) else 'not configured'}"
-            f" and {'ran' if self._ran(self._highest()) else 'did not run'}"
+        configured: str = (
+            "configured" if self._highest() in self.__configured else "not configured"
         )
+        ran: str = "ran" if self._highest() in self.__ran else "did not run"
+        return f"{self._highest()} checks {configured} and {ran}"
 
-    def _highest(self) -> CheckClass:
+    def _highest(self) -> str:
         return self.__applicable[0]
 
     def _lower_ran(self) -> bool:
-        return any(self._ran(check) for check in self.__applicable[1:])
-
-    @staticmethod
-    def _applicable(suffixes: set[str]) -> tuple[CheckClass, ...]:
-        return tuple(
-            check for check in CheckRegistry.CLASSES if check.suffixes & suffixes
-        )
-
-    def _configured(self, check: CheckClass) -> bool:
-        return check.name in self.__configured
-
-    def _ran(self, check: CheckClass) -> bool:
-        return any(
-            command in invocation
-            for invocation in self.__commands
-            for command in check.commands
-        )
+        return any(name in self.__ran for name in self.__applicable[1:])
 
 
 class CommentMetric:
@@ -122,9 +102,7 @@ class CommentMetric:
 
     def __init__(self, evidence: Evidence) -> None:
         self.__files: list[FileInfo] = [
-            file
-            for file in evidence.diff.files
-            if file.touched and Languages.get_marker(file.suffix)
+            file for file in evidence.diff.files if file.touched and file.code
         ]
         self.__baseline: float = evidence.repository.comment_density
 

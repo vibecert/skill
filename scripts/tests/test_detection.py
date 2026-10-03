@@ -1,6 +1,34 @@
 import pytest
 
-from vibecert.rubric import CheckRegistry, Languages
+from vibecert.detection import (
+    CheckRegistry,
+    ImportPatterns,
+    Languages,
+    SensitiveData,
+)
+
+
+class TestSensitiveData:
+    @pytest.mark.parametrize(
+        "line,expected",
+        [
+            ("patient_record = load()", ["personal data referenced"]),
+            ("nhs_number = read()", ["personal data referenced"]),
+            ("total = one + two", []),
+        ],
+    )
+    def test_scan_added_lines_returns_category_when_named(
+        self, line: str, expected: list[str]
+    ) -> None:
+        assert SensitiveData.scan([line]) == expected
+
+
+class TestImportPatterns:
+    def test_get_pattern_known_suffix_returns_expression(self) -> None:
+        assert ImportPatterns.get_pattern(".py", "foo") is not None
+
+    def test_get_pattern_unknown_suffix_returns_none(self) -> None:
+        assert ImportPatterns.get_pattern(".md", "foo") is None
 
 
 class TestLanguages:

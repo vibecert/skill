@@ -1,6 +1,7 @@
 import pytest
 
 from tests.conftest import evidence_of, file_of
+from vibecert.bundle_types import CheckInfo
 from vibecert.metrics import (
     AmendmentMetric,
     CommentMetric,
@@ -40,50 +41,38 @@ class TestAmendmentMetric:
 
 
 class TestSecondaryToolMetric:
-    def test_get_band_highest_class_configured_and_ran_returns_three(self) -> None:
+    @staticmethod
+    def _checks(
+        applicable: list[str], configured: list[str], ran: list[str]
+    ) -> CheckInfo:
+        return CheckInfo(
+            applicable=applicable, configured=configured, ran=ran, configs={}
+        )
+
+    @pytest.mark.parametrize(
+        "configured,ran,expected",
+        [
+            (["behavioural"], ["behavioural"], 3),
+            (["behavioural"], [], 2),
+            ([], ["static"], 2),
+            ([], [], 1),
+        ],
+    )
+    def test_get_band_highest_class_state_returns_banded_score(
+        self, configured: list[str], ran: list[str], expected: int
+    ) -> None:
         assert (
             SecondaryToolMetric(
                 evidence_of(
                     [file_of("foo.py", ".py", 10)],
-                    ["uv run pytest -q"],
-                    {"pyproject.toml": ["behavioural"]},
+                    checks=self._checks(
+                        ["behavioural", "static", "format"], configured, ran
+                    ),
                 )
             )
             .get_band()
             .score
-            == 3
-        )
-
-    def test_get_band_highest_class_configured_not_run_returns_two(self) -> None:
-        assert (
-            SecondaryToolMetric(
-                evidence_of(
-                    [file_of("foo.py", ".py", 10)],
-                    ["ls"],
-                    {"pyproject.toml": ["behavioural"]},
-                )
-            )
-            .get_band()
-            .score
-            == 2
-        )
-
-    def test_get_band_only_lower_class_ran_returns_two(self) -> None:
-        assert (
-            SecondaryToolMetric(
-                evidence_of([file_of("foo.py", ".py", 10)], ["ruff check ."], {})
-            )
-            .get_band()
-            .score
-            == 2
-        )
-
-    def test_get_band_nothing_configured_or_run_returns_one(self) -> None:
-        assert (
-            SecondaryToolMetric(evidence_of([file_of("foo.py", ".py", 10)]))
-            .get_band()
-            .score
-            == 1
+            == expected
         )
 
     def test_get_band_markdown_linter_ran_returns_three(self) -> None:
@@ -91,8 +80,7 @@ class TestSecondaryToolMetric:
             SecondaryToolMetric(
                 evidence_of(
                     [file_of("foo.md", ".md", 10)],
-                    ["markdownlint foo.md"],
-                    {".markdownlint.json": ["static"]},
+                    checks=self._checks(["static", "format"], ["static"], ["static"]),
                 )
             )
             .get_band()
