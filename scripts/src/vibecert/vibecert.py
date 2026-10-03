@@ -5,6 +5,7 @@ import pathlib
 
 from vibecert.bundle_types import Evidence
 from vibecert.collector import EvidenceCollector
+from vibecert.evidence import EvidenceProjection
 from vibecert.git_repository import GitRepository
 from vibecert.metrics import DeterministicMetrics
 from vibecert.transcript import TranscriptStore
@@ -87,5 +88,30 @@ class MetricsCli:
             description="Score the deterministic VibeCert metrics"
         )
         parser.add_argument("bundle")
+        parser.add_argument("--out", default=None)
+        return parser
+
+
+class EvidenceCli:
+    """Command line entry point for the evidence one metric is scored from."""
+
+    @staticmethod
+    def run() -> None:
+        """Print the slice of a collected bundle that one metric needs."""
+        arguments: argparse.Namespace = EvidenceCli._parser().parse_args()
+        Cli._emit(
+            EvidenceProjection(
+                MetricsCli._load(pathlib.Path(arguments.bundle))
+            ).project(arguments.metric),
+            arguments.out,
+        )
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Print the evidence for one VibeCert metric"
+        )
+        parser.add_argument("bundle")
+        parser.add_argument("metric", choices=EvidenceProjection.METRICS)
         parser.add_argument("--out", default=None)
         return parser

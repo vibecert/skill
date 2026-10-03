@@ -327,8 +327,9 @@ class TranscriptStore:
     @staticmethod
     def _in_repository(session: TranscriptSession, root: pathlib.Path) -> bool:
         return any(
-            directory == str(root) or directory.startswith(str(root) + "/")
+            resolved == str(root) or resolved.startswith(str(root) + "/")
             for directory in session.get_working_directories()
+            for resolved in (str(pathlib.Path(directory).resolve()),)
         )
 
     @staticmethod

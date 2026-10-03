@@ -130,4 +130,9 @@ class LineAttribution:
 
     @staticmethod
     def _relative(path: str, root: pathlib.Path) -> str:
-        return path[len(str(root)) + 1 :] if path.startswith(str(root) + "/") else path
+        resolved: str = str(pathlib.Path(path).resolve())
+        return (
+            resolved[len(str(root)) + 1 :]
+            if resolved.startswith(str(root) + "/")
+            else resolved
+        )

@@ -148,7 +148,7 @@ Whether work was requested in units small enough to be understood as they arrive
 
 Evidence: generated lines accepted per human prompt, and whether prompts name a unit of work or an outcome.
 
-| Band | Median generated lines per prompt |
+| Band | Median generated lines per producing prompt |
 | --- | --- |
 | `1` | above 200 |
 | `2` | 50 to 200 |
@@ -157,6 +157,9 @@ Evidence: generated lines accepted per human prompt, and whether prompts name a 
 The bands follow the reviewable limit rather than any property of prompting.
 Defect detection degrades beyond 200 to 400 changed lines in one sitting, so output above 200 lines from a single prompt arrives faster than it can be read.
 Band `3` is set well inside that limit, because a prompt is one of several a sitting has to absorb.
+
+Prompts that produce no output are questions rather than requests, and are excluded from the median.
+Counting them would drive it to zero on any branch where the output was interrogated, which is the opposite of what the metric rewards.
 
 The count is a support signal, not the decision.
 A single prompt that produces a large but genuinely atomic output, such as a generated schema, is not scored down for its size.

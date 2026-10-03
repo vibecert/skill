@@ -222,6 +222,24 @@ class TestTranscriptStore:
             == 1
         )
 
+    def test_find_sessions_symlinked_working_directory_resolves_to_repository(
+        self, store_mocks: unittest.mock.MagicMock, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        store_mocks.return_value = [
+            self._session("/link/sub", ("2026-01-02", "2026-01-03"))
+        ]
+        mocker.patch.object(
+            pathlib.Path, "resolve", return_value=pathlib.Path("/repo/sub")
+        )
+        assert (
+            len(
+                TranscriptStore(pathlib.Path("/projects")).find_sessions(
+                    pathlib.Path("/repo"), "2026-01-01", "2026-01-04"
+                )
+            )
+            == 1
+        )
+
     @pytest.mark.parametrize(
         "directory,span",
         [

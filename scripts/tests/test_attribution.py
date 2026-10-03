@@ -2,6 +2,7 @@ import pathlib
 import typing
 
 import pytest
+import pytest_mock
 
 from vibecert.attribution import LineAttribution
 from vibecert.vibecert_types import EditHunk, FileDiff
@@ -57,6 +58,21 @@ class TestLineAttribution:
         assert (
             LineAttribution({}, [], pathlib.Path("/repo")).get_touched_proportion()
             == 0.0
+        )
+
+    def test_get_generated_symlinked_edit_path_resolves_to_repository(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            pathlib.Path, "resolve", return_value=pathlib.Path("/repo/foo.py")
+        )
+        assert (
+            LineAttribution(
+                self.DIFF,
+                [EditHunk("session", "", "bash", "/link/foo.py", ["alpha"], 0, "")],
+                pathlib.Path("/repo"),
+            ).get_generated()
+            == 1
         )
 
     def test_get_per_file_mixed_authorship_returns_split(
