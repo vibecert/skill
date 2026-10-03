@@ -4,6 +4,7 @@ from vibecert.detection import (
     CheckRegistry,
     ImportPatterns,
     Languages,
+    RiskSeverity,
     SensitiveData,
 )
 
@@ -57,3 +58,23 @@ class TestCheckRegistry:
         self, name: str, content: str, expected: list[str]
     ) -> None:
         assert CheckRegistry.configured_by(name, content) == expected
+
+
+class TestRiskSeverity:
+    @pytest.mark.parametrize(
+        "findings,expected",
+        [
+            ([], False),
+            (["S113: requests call without timeout"], False),
+            (["S101: assert detected"], False),
+            (["S602: subprocess call with shell=True"], True),
+            (["S105: possible hardcoded password"], True),
+            (["S608: possible SQL injection"], True),
+            (["personal data referenced"], True),
+            (["S113: no timeout", "S607: partial executable path"], True),
+        ],
+    )
+    def test_is_severe_findings_reports_whether_any_can_do_harm(
+        self, findings: list[str], expected: bool
+    ) -> None:
+        assert RiskSeverity.is_severe(findings) is expected

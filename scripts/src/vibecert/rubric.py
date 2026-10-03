@@ -10,3 +10,17 @@ class Thresholds:
     LENGTH_HIGH: int = 800
     PROMPT_LOW: int = 50
     PROMPT_HIGH: int = 200
+    FAN_IN_LOW: int = 1
+    FAN_IN_HIGH: int = 5
+
+    LOOKUP: dict[tuple[int, int], int] = {
+        (1, 1): 2,
+        (1, 2): 1,
+        (1, 3): 1,
+        (2, 1): 3,
+        (2, 2): 2,
+        (2, 3): 1,
+        (3, 1): 3,
+        (3, 2): 3,
+        (3, 3): 3,
+    }

@@ -55,3 +55,12 @@ class Band:
     score: int | None
     measure: float | None
     evidence: str
+
+
+@dataclasses.dataclass
+class ScoredMetric:
+    number: int
+    title: str
+    raw: int | None
+    adjusted: int | None
+    evidence: str

@@ -240,7 +240,9 @@ Matching the surrounding style is correct behaviour and should not be penalised.
 Weights say how much good practice mattered on this branch.
 They do not score the practice itself.
 
-How a weight combines with a metric is defined by the lookup table, which is specified separately.
+Three weights apply, and a branch carries the highest of them.
+All three point the same way: a long, central or risky change raises the stakes, and a short, peripheral, harmless one lowers them.
+Taking the maximum means one demanding dimension is enough to hold the branch to a higher standard, which is the behaviour wanted.
 
 ### Gate: quantity of generative output
 
@@ -277,27 +279,35 @@ A short branch carries a low weight because there may be genuinely nothing to as
 
 How much of the system depends on what was changed.
 
-Support signal: import fan-in of the changed files, as a percentile within the repository.
+Derived from import fan-in, taking the most depended-upon file the branch changes.
 
-`1`: Peripheral.
-The running system would be unaffected by its removal.
+| Band | Importers of the most depended-upon changed file |
+| --- | --- |
+| `1` | 0 |
+| `2` | 1 to 4 |
+| `3` | 5 or more |
 
-`2`: Supporting.
-Part of the system uses it, and there is a workaround if it fails.
+`1` is peripheral: nothing imports it, so the running system is unaffected by its removal.
+`2` is supporting: part of the system uses it.
+`3` is central: it sits on a path much of the system depends on.
 
-`3`: Central.
-It sits on a path most of the system depends on, with no fallback.
+Fan-in is matched textually and only for the languages the tool recognises, so an unrecognised language yields `1` by default.
+That understates criticality rather than overstating it, which is the safer direction for a weight that makes scoring harsher.
 
 ### Code risk
 
 What the change could do if it is wrong.
 
-`1`: No external interaction, no sensitive data, no privileged operation.
+Derived from the security findings on the changed code.
 
-`2`: One of those, bounded.
-Reading a local configuration file sits here.
+| Band | Findings |
+| --- | --- |
+| `1` | none |
+| `2` | any finding |
+| `3` | credentials, personal data, shell execution, or SQL assembled from input |
 
-`3`: Credentials or personal data, outbound network calls, shell or SQL assembled from input, or changes to permissions.
+`3` is reserved for the classes that can do harm outside the process.
+Everything else a scanner reports sits at `2`: present, bounded, worth knowing.
 
 Findings come from ruff's implementation of the bandit security ruleset, so the catalogue is maintained elsewhere and grows without this tool changing.
 Assertions are not reported, the rule for them being a finding in shipped code and an idiom in a test suite.
@@ -307,6 +317,33 @@ Sensitive data is matched separately, by domain terms, no security tool knowing 
 
 Identifying high-risk code also serves as a check that nothing harmful was emitted.
 Anything found that way is reported on the certificate regardless of the band.
+
+## The lookup table
+
+A weight does not score practice; it decides how much a shortfall in practice matters.
+
+| Metric band | Weight `1` | Weight `2` | Weight `3` |
+| --- | --- | --- | --- |
+| `1` | 2 | 1 | 1 |
+| `2` | 3 | 2 | 1 |
+| `3` | 3 | 3 | 3 |
+
+Reading the table: at weight `1` the stakes are low, so a shortfall is forgiven and the band rises.
+At weight `3` the stakes are high, so a middling band falls.
+A band of `3` never moves, because doing the thing properly on a critical change is still doing it properly.
+
+The two worked examples in the original description fall out of this.
+No questions on a short branch, `(1,1)`, gives 2, because no questions is not ideal but there may have been nothing to ask.
+No questions on a long branch, `(1,3)`, gives 1.
+
+## The overall score
+
+The mean of the adjusted bands, over the metrics that apply, to one decimal place out of 3.
+
+A metric that does not apply is left out of both the sum and the count, rather than scored zero.
+
+There is no tier, no letter and no pass mark.
+A number against a published rubric says more than a word that hides it.
 
 ## Basis of thresholds
 

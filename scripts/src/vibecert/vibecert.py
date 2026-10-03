@@ -4,11 +4,15 @@ import json
 import pathlib
 
 from vibecert.bundle_types import Evidence
+from vibecert.certificate import Certificate
 from vibecert.collector import EvidenceCollector
 from vibecert.evidence import EvidenceProjection
 from vibecert.git_repository import GitRepository
+from vibecert.json_values import Json
 from vibecert.metrics import DeterministicMetrics
+from vibecert.render import CertificateMarkdown
 from vibecert.transcript import TranscriptStore
+from vibecert.vibecert_types import Band
 
 
 class Cli:
@@ -113,5 +117,49 @@ class EvidenceCli:
         )
         parser.add_argument("bundle")
         parser.add_argument("metric", choices=EvidenceProjection.METRICS)
+        parser.add_argument("--out", default=None)
+        return parser
+
+
+class ScoreCli:
+    """Command line entry point for the certificate."""
+
+    @staticmethod
+    def run() -> None:
+        """Combine the judged bands with the evidence and render a certificate."""
+        arguments: argparse.Namespace = ScoreCli._parser().parse_args()
+        Cli._emit(
+            CertificateMarkdown(
+                Certificate(
+                    MetricsCli._load(pathlib.Path(arguments.bundle)),
+                    ScoreCli._judged(pathlib.Path(arguments.judged)),
+                )
+            ).render(),
+            arguments.out,
+        )
+
+    @staticmethod
+    def _judged(path: pathlib.Path) -> list[Band]:
+        return [
+            Band(
+                Json.as_text(Json.as_dict(band).get("metric")),
+                ScoreCli._score(Json.as_dict(band).get("score")),
+                None,
+                Json.as_text(Json.as_dict(band).get("evidence")),
+            )
+            for band in Json.as_list(json.loads(path.read_text()))
+        ]
+
+    @staticmethod
+    def _score(value: object) -> int | None:
+        return value if isinstance(value, int) else None
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Render a VibeCert certificate"
+        )
+        parser.add_argument("bundle")
+        parser.add_argument("judged")
         parser.add_argument("--out", default=None)
         return parser

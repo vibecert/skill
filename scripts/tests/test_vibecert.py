@@ -6,7 +6,7 @@ import pytest_mock
 
 from tests.conftest import evidence_of
 from vibecert.collector import EvidenceCollector
-from vibecert.vibecert import Cli, MetricsCli
+from vibecert.vibecert import Cli, MetricsCli, ScoreCli
 
 
 class TestCli:
@@ -56,4 +56,33 @@ class TestMetricsCli:
     def test_parser_bundle_argument_returns_path(self) -> None:
         assert MetricsCli._parser().parse_args(["/bundle.json"]).bundle == (
             "/bundle.json"
+        )
+
+
+class TestScoreCli:
+    def test_judged_bands_file_returns_bands(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            pathlib.Path,
+            "read_text",
+            return_value='[{"metric": "follow_up_questions", "score": 3, '
+            '"evidence": "specific questions"}]',
+        )
+        assert ScoreCli._judged(pathlib.Path("/judged.json"))[0].score == 3
+
+    def test_judged_null_score_returns_none(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            pathlib.Path,
+            "read_text",
+            return_value='[{"metric": "coding_guidelines", "score": null, '
+            '"evidence": "nothing applies"}]',
+        )
+        assert ScoreCli._judged(pathlib.Path("/judged.json"))[0].score is None
+
+    def test_parser_requires_bundle_and_judged(self) -> None:
+        assert ScoreCli._parser().parse_args(["/b.json", "/j.json"]).judged == (
+            "/j.json"
         )

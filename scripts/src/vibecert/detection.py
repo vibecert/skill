@@ -193,3 +193,39 @@ class ImportPatterns:
             if suffix in cls.TEMPLATES
             else None
         )
+
+
+class RiskSeverity:
+    """Which security findings can do harm outside the process."""
+
+    SEVERE: tuple[str, ...] = (
+        "S105",
+        "S106",
+        "S107",
+        "S602",
+        "S603",
+        "S604",
+        "S605",
+        "S606",
+        "S607",
+        "S608",
+        "personal data",
+    )
+
+    @classmethod
+    def is_severe(cls, findings: list[str]) -> bool:
+        """Report whether any finding belongs to a class that can do harm.
+
+        Args:
+            findings (list[str]): The findings recorded against the changed files.
+
+        Returns:
+            bool: True where at least one is credentials, personal data, shell
+                execution or assembled SQL.
+
+        """
+        return any(
+            finding.startswith(severe) or severe in finding
+            for finding in findings
+            for severe in cls.SEVERE
+        )

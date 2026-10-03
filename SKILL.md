@@ -48,27 +48,10 @@ not a score.
 ```
 
 - Take each subagent's band as returned. Do not adjust one metric to sit consistently with another.
+- Write the three results to `<scratch>/judged.json`, as a JSON list of the objects they returned.
 
 # Output
 
-- Print markdown to stdout, in this form:
-
-```
-## VibeCert
-
-`<branch>`, <n> commits, <n> changed lines, <n> generated
-
-| Metric | Score | Evidence |
-| --- | --- | --- |
-| 1. Follow-up questions | <n>/3 | <one line> |
-| 2. Coding guidelines | <n>/3 | <one line> |
-| 3. Output amendments | <n>/3 | <one line> |
-| 4. Prompt granularity | <n>/3 | <one line> |
-| 5. Secondary tool usage | <n>/3 | <one line> |
-| 6. Generative comments | <n>/3 | <one line> |
-
-Not yet scored: the weights.
-```
-
-- Report a metric that does not apply as `n/a`, with the reason as its evidence.
-- Do not give an overall score. The weights are not implemented, and a mean of six metrics is not the certificate.
+- Render the certificate with `<tool> vibecert-score <bundle> <scratch>/judged.json` and print what it returns, unchanged.
+- **Important** do not compute the overall score, apply the weights, or reword the evidence yourself. The lookup table and the gate live in the tool so that two runs of the same branch agree.
+- A branch below the certification gate renders as not certified rather than scoring. Print that as it stands.
