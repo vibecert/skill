@@ -1,4 +1,5 @@
 from vibecert.certificate_types import CertificateDocument, MetricResult
+from vibecert.page import CertificatePage
 
 
 class CertificateMarkdown:
@@ -41,8 +42,28 @@ class CertificateMarkdown:
                 "",
                 f"`{self.__document.identifier}`, "
                 f"scored under {self.__document.rubrics_version}",
+                "",
+                *self._share(),
             ]
         )
+
+    def _share(self) -> list[str]:
+        snippets: CertificateSnippets = CertificateSnippets(self.__document)
+        return [
+            "### To share",
+            "",
+            "As a commit trailer:",
+            "",
+            "```",
+            snippets.get_trailer(),
+            "```",
+            "",
+            "In a pull request:",
+            "",
+            "```markdown",
+            snippets.get_summary(),
+            "```",
+        ]
 
     def _headline(self) -> str:
         if self.__document.score is None:
@@ -91,4 +112,57 @@ class CertificateMarkdown:
             ["", "Security findings: " + "; ".join(self.__document.findings)]
             if self.__document.findings
             else []
+        )
+
+
+class CertificateSnippets:
+    """Lines the author can paste wherever they want the score to appear.
+
+    Args:
+        document (CertificateDocument): The scored result for the branch.
+
+    """
+
+    BADGE: str = "https://img.shields.io/endpoint?url="
+
+    def __init__(self, document: CertificateDocument) -> None:
+        self.__document: CertificateDocument = document
+
+    def get_trailer(self) -> str:
+        """Return a git trailer, short enough for a commit message body.
+
+        Returns:
+            str: One line, within the 72 characters a body line allows.
+
+        """
+        return f"VibeCert: {self._score()} ({self.get_url()})"
+
+    def get_summary(self) -> str:
+        """Return a badge and a sentence, for a pull request description.
+
+        Returns:
+            str: Two lines of markdown.
+
+        """
+        return (
+            f"[![VibeCert]({self.BADGE}{self.get_url()}/badge.json)]"
+            f"({self.get_url()})\n\n"
+            f"Vibe coding practices on this branch scored {self._score()} "
+            f"with VibeCert: {self.get_url()}"
+        )
+
+    def get_url(self) -> str:
+        """Return the address this certificate is served from.
+
+        Returns:
+            str: The certificate's address.
+
+        """
+        return f"{CertificatePage.SITE}/{self.__document.identifier}"
+
+    def _score(self) -> str:
+        return (
+            "not certified"
+            if self.__document.score is None
+            else f"{self.__document.score}/3"
         )

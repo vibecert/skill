@@ -29,6 +29,7 @@ class CertificatePage:
     """
 
     ABOUT: str = "https://l.martinchapman.co.uk/vibecert"
+    SITE: str = "https://vibecert.github.io"
     STATES: dict[str, str] = {"not_applicable": "n/a", "not_scored": "missing"}
 
     def __init__(self, document: CertificateDocument) -> None:

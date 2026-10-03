@@ -77,4 +77,6 @@ done
 
 - A certificate's identifier is fixed by the repository, branch and merge base, so rescoring the same branch replaces its certificate rather than adding another.
 - Finish by printing the certificate's address, `https://vibecert.github.io/<id>`.
+- The rendered certificate ends with a section offering a commit trailer and a pull request snippet. Print them as given.
+- **Important** do not write either into a commit, a pull request or any file. Where the score goes is the author's decision, not yours.
 - **Important** the identifier is all a private repository publishes. Check that `--private` was passed before publishing one, because the page names the repository and branch otherwise.

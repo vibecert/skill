@@ -1,7 +1,7 @@
-from tests.conftest import evidence_of, file_of
+from tests.conftest import certificate_document, evidence_of, file_of
 from vibecert.bundle_types import CheckInfo
 from vibecert.certificate import Certificate
-from vibecert.render import CertificateMarkdown
+from vibecert.render import CertificateMarkdown, CertificateSnippets
 from vibecert.vibecert_types import Band
 
 
@@ -72,3 +72,36 @@ class TestCertificateMarkdown:
 
     def test_render_reports_the_identifier_and_rubric_version(self) -> None:
         assert "vibecert/rubrics@1" in rendered()
+
+
+class TestCertificateSnippets:
+    def test_get_trailer_certified_names_the_score_and_address(self) -> None:
+        assert CertificateSnippets(certificate_document(score=2.3)).get_trailer() == (
+            "VibeCert: 2.3/3 (https://vibecert.github.io/abc1234)"
+        )
+
+    def test_get_trailer_fits_a_commit_body_line(self) -> None:
+        assert len(CertificateSnippets(certificate_document()).get_trailer()) <= 72
+
+    def test_get_trailer_below_the_gate_says_not_certified(self) -> None:
+        assert (
+            "not certified"
+            in CertificateSnippets(certificate_document(score=None)).get_trailer()
+        )
+
+    def test_get_summary_carries_a_badge_and_a_sentence(self) -> None:
+        summary = CertificateSnippets(certificate_document()).get_summary()
+        assert "img.shields.io/endpoint" in summary and "scored 2.3/3" in summary
+
+    def test_get_url_returns_the_published_address(self) -> None:
+        assert CertificateSnippets(certificate_document()).get_url() == (
+            "https://vibecert.github.io/abc1234"
+        )
+
+
+class TestSharingSection:
+    def test_render_offers_a_trailer_to_paste(self) -> None:
+        assert "As a commit trailer:" in rendered()
+
+    def test_render_offers_a_pull_request_snippet(self) -> None:
+        assert "In a pull request:" in rendered()
