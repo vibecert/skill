@@ -1,17 +1,21 @@
-from vibecert.certificate import Certificate
-from vibecert.vibecert_types import ScoredMetric
+from vibecert.certificate_types import CertificateDocument, MetricResult
 
 
 class CertificateMarkdown:
     """The certificate as markdown.
 
     Args:
-        certificate (Certificate): The scored result for the branch.
+        document (CertificateDocument): The scored result for the branch.
 
     """
 
-    def __init__(self, certificate: Certificate) -> None:
-        self.__certificate: Certificate = certificate
+    STATES: dict[str, str] = {
+        "not_applicable": "n/a",
+        "not_scored": "missing",
+    }
+
+    def __init__(self, document: CertificateDocument) -> None:
+        self.__document: CertificateDocument = document
 
     def render(self) -> str:
         """Return the certificate, ready to print.
@@ -30,39 +34,61 @@ class CertificateMarkdown:
                 "",
                 "| Metric | Score | Adjusted | Evidence |",
                 "| --- | --- | --- | --- |",
-                *(self._row(metric) for metric in self.__certificate.get_metrics()),
+                *(self._row(metric) for metric in self.__document.metrics),
                 "",
                 self._weights(),
+                *self._findings(),
+                "",
+                f"`{self.__document.identifier}`, "
+                f"scored under {self.__document.rubrics_version}",
             ]
         )
 
     def _headline(self) -> str:
-        return (
-            f"**{self.__certificate.get_score()}/3**"
-            if self.__certificate.get_score() is not None
-            else "Not certified: too little of this branch was generated to score."
+        if self.__document.score is None:
+            return "Not certified: too little of this branch was generated to score."
+        return f"**{self.__document.score}/3**" + (
+            ""
+            if self.__document.scored == self.__document.applicable
+            else f", over only {self.__document.scored} of "
+            f"{self.__document.applicable} metrics that apply"
         )
 
     def _branch(self) -> str:
-        evidence = self.__certificate.get_evidence()
         return (
-            f"`{evidence.branch.name}`, {len(evidence.branch.commits)} commits, "
-            f"{evidence.diff.changed} changed lines, "
-            f"{evidence.attribution.touched_proportion:.0%} generated"
+            f"{self._name()}, {self.__document.commits} commits, "
+            f"{self.__document.changed_lines} changed lines, "
+            f"{self.__document.generative_proportion:.0%} generated"
         )
 
-    @staticmethod
-    def _row(metric: ScoredMetric) -> str:
+    def _name(self) -> str:
+        return (
+            "A private repository"
+            if self.__document.private
+            else f"`{self.__document.repository}`, `{self.__document.branch}`"
+        )
+
+    def _row(self, metric: MetricResult) -> str:
         return (
             f"| {metric.number}. {metric.title} "
-            f"| {'n/a' if metric.raw is None else f'{metric.raw}/3'} "
-            f"| {'n/a' if metric.adjusted is None else f'{metric.adjusted}/3'} "
+            f"| {self._band(metric.state, metric.raw)} "
+            f"| {self._band(metric.state, metric.adjusted)} "
             f"| {metric.evidence} |"
         )
 
+    def _band(self, state: str, score: int | None) -> str:
+        return self.STATES.get(state, f"{score}/3")
+
     def _weights(self) -> str:
-        weights = self.__certificate.get_weights()
+        weights = self.__document.weights
         return (
-            f"Weight {weights.get_weight()}: length {weights.get_length()}, "
-            f"criticality {weights.get_criticality()}, risk {weights.get_risk()}."
+            f"Weight {weights.applied}: length {weights.length}, "
+            f"criticality {weights.criticality}, risk {weights.risk}."
+        )
+
+    def _findings(self) -> list[str]:
+        return (
+            ["", "Security findings: " + "; ".join(self.__document.findings)]
+            if self.__document.findings
+            else []
         )

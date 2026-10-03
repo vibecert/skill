@@ -5,6 +5,7 @@ import pathlib
 
 from vibecert.bundle_types import Evidence
 from vibecert.certificate import Certificate
+from vibecert.certificate_types import CertificateDocument
 from vibecert.collector import EvidenceCollector
 from vibecert.evidence import EvidenceProjection
 from vibecert.git_repository import GitRepository
@@ -129,13 +130,23 @@ class ScoreCli:
         """Combine the judged bands with the evidence and render a certificate."""
         arguments: argparse.Namespace = ScoreCli._parser().parse_args()
         Cli._emit(
-            CertificateMarkdown(
+            ScoreCli._format(
                 Certificate(
                     MetricsCli._load(pathlib.Path(arguments.bundle)),
                     ScoreCli._judged(pathlib.Path(arguments.judged)),
-                )
-            ).render(),
+                    arguments.private,
+                ).get_document(),
+                arguments.format,
+            ),
             arguments.out,
+        )
+
+    @staticmethod
+    def _format(document: CertificateDocument, style: str) -> str:
+        return (
+            document.model_dump_json(indent=1)
+            if style == "json"
+            else CertificateMarkdown(document).render()
         )
 
     @staticmethod
@@ -161,5 +172,9 @@ class ScoreCli:
         )
         parser.add_argument("bundle")
         parser.add_argument("judged")
+        parser.add_argument(
+            "--format", choices=("markdown", "json"), default="markdown"
+        )
+        parser.add_argument("--private", action="store_true")
         parser.add_argument("--out", default=None)
         return parser

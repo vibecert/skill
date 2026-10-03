@@ -50,9 +50,18 @@ class Weights:
             int: The band, from 1 to 3.
 
         """
-        if self._fan_in() < Thresholds.FAN_IN_LOW:
+        if self._rank() < Thresholds.CRITICALITY_LOW:
             return 1
-        return 2 if self._fan_in() < Thresholds.FAN_IN_HIGH else 3
+        return 2 if self._rank() <= Thresholds.CRITICALITY_HIGH else 3
+
+    def _rank(self) -> float:
+        distribution: list[int] = self.__evidence.repository.fan_in_distribution
+        return (
+            sum(1 for other in distribution if other <= self._fan_in())
+            / len(distribution)
+            if distribution
+            else 0.0
+        )
 
     def get_risk(self) -> int:
         """Return the band for what the change could do if it is wrong.

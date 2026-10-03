@@ -240,6 +240,25 @@ class TestTranscriptStore:
             == 1
         )
 
+    def test_find_sessions_window_in_another_offset_compares_as_instants(
+        self, store_mocks: unittest.mock.MagicMock
+    ) -> None:
+        store_mocks.return_value = [
+            self._session(
+                "/repo", ("2026-01-02T17:50:00.000Z", "2026-01-02T17:55:00.000Z")
+            )
+        ]
+        assert (
+            len(
+                TranscriptStore(pathlib.Path("/projects")).find_sessions(
+                    pathlib.Path("/repo"),
+                    "2026-01-02T18:35:00+01:00",
+                    "2026-01-03T00:00:00+00:00",
+                )
+            )
+            == 1
+        )
+
     @pytest.mark.parametrize(
         "directory,span",
         [

@@ -1,3 +1,4 @@
+import datetime
 import json
 import pathlib
 import re
@@ -332,10 +333,14 @@ class TranscriptStore:
             for resolved in (str(pathlib.Path(directory).resolve()),)
         )
 
-    @staticmethod
-    def _overlaps(session: TranscriptSession, start: str, end: str) -> bool:
+    @classmethod
+    def _overlaps(cls, session: TranscriptSession, start: str, end: str) -> bool:
         return (
             bool(session.get_span()[0])
-            and session.get_span()[1] >= start
-            and session.get_span()[0] <= end
+            and cls._moment(session.get_span()[1]) >= cls._moment(start)
+            and cls._moment(session.get_span()[0]) <= cls._moment(end)
         )
+
+    @staticmethod
+    def _moment(timestamp: str) -> datetime.datetime:
+        return datetime.datetime.fromisoformat(timestamp).astimezone(datetime.UTC)

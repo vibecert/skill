@@ -6,6 +6,7 @@ class RepositoryInfo(BaseModel):
     name: str
     remote: str
     comment_density: float
+    fan_in_distribution: list[int]
 
 
 class CommitInfo(BaseModel):

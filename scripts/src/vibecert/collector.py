@@ -20,7 +20,7 @@ from vibecert.bundle_types import (
 )
 from vibecert.comments import CommentCounter
 from vibecert.criticality import FanInCounter
-from vibecert.detection import CheckRegistry
+from vibecert.detection import CheckRegistry, ImportPatterns
 from vibecert.git_repository import GitRepository
 from vibecert.guidelines import GuidelineIndex
 from vibecert.revisions import RevisionCounter
@@ -99,6 +99,15 @@ class EvidenceCollector:
             name=self.__repository.get_root().name,
             remote=self.__repository.get_remote(),
             comment_density=self._baseline_density(),
+            fan_in_distribution=self._fan_in_distribution(),
+        )
+
+    def _fan_in_distribution(self) -> list[int]:
+        counter: FanInCounter = FanInCounter(self._repository_contents())
+        return sorted(
+            counter.count(path)
+            for path in self._repository_contents()
+            if ImportPatterns.get_pattern(pathlib.PurePath(path).suffix, "foo")
         )
 
     def _baseline_density(self) -> float:

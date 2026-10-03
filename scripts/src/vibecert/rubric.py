@@ -1,6 +1,8 @@
 class Thresholds:
     """Band boundaries, fixed from published measurement."""
 
+    VERSION: str = "vibecert/rubrics@1"
+
     AMENDMENT_LOW: float = 0.05
     AMENDMENT_HIGH: float = 0.15
     COMMENT_LOW: float = 0.10
@@ -10,8 +12,8 @@ class Thresholds:
     LENGTH_HIGH: int = 800
     PROMPT_LOW: int = 50
     PROMPT_HIGH: int = 200
-    FAN_IN_LOW: int = 1
-    FAN_IN_HIGH: int = 5
+    CRITICALITY_LOW: float = 0.5
+    CRITICALITY_HIGH: float = 0.85
 
     LOOKUP: dict[tuple[int, int], int] = {
         (1, 1): 2,

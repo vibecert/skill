@@ -279,17 +279,20 @@ A short branch carries a low weight because there may be genuinely nothing to as
 
 How much of the system depends on what was changed.
 
-Derived from import fan-in, taking the most depended-upon file the branch changes.
+Derived from import fan-in, taking the most depended-upon file the branch changes and ranking it against every other file in the repository.
 
-| Band | Importers of the most depended-upon changed file |
+| Band | Rank of that file's fan-in within the repository |
 | --- | --- |
-| `1` | 0 |
-| `2` | 1 to 4 |
-| `3` | 5 or more |
+| `1` | below the 0.5 percentile |
+| `2` | 0.5 to 0.85 |
+| `3` | above 0.85 |
 
-`1` is peripheral: nothing imports it, so the running system is unaffected by its removal.
+`1` is peripheral: less depended upon than most of its neighbours.
 `2` is supporting: part of the system uses it.
-`3` is central: it sits on a path much of the system depends on.
+`3` is central: among the most depended-upon files there are.
+
+The rank is relative because an absolute count does not travel.
+Five importers makes a file central in a twenty-file package and peripheral in a thousand-file one, and an absolute threshold scored every branch of this repository at `3`, pinning the weight and leaving length and risk unable to affect it.
 
 Fan-in is matched textually and only for the languages the tool recognises, so an unrecognised language yields `1` by default.
 That understates criticality rather than overstating it, which is the safer direction for a weight that makes scoring harsher.

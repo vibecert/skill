@@ -21,8 +21,8 @@ class TestRubricAgreement:
             Thresholds.LENGTH_HIGH,
             Thresholds.PROMPT_LOW,
             Thresholds.PROMPT_HIGH,
-            Thresholds.FAN_IN_LOW,
-            Thresholds.FAN_IN_HIGH,
+            Thresholds.CRITICALITY_LOW,
+            Thresholds.CRITICALITY_HIGH,
         ],
     )
     def test_thresholds_prose_rubric_states_every_value(

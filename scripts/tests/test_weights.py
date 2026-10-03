@@ -5,10 +5,17 @@ from vibecert.weights import Weights
 
 
 def weighted(
-    changed: int = 0, fan_in: int = 0, risk: list[str] | None = None, touched: int = 100
+    changed: int = 0,
+    fan_in: int = 0,
+    risk: list[str] | None = None,
+    touched: int = 100,
+    distribution: list[int] | None = None,
 ) -> Weights:
     bundle = evidence_of(
-        [file_of("foo.py", ".py", changed, fan_in=fan_in, risk_signals=risk)]
+        [file_of("foo.py", ".py", changed, fan_in=fan_in, risk_signals=risk)],
+        fan_in_distribution=(
+            [0, 0, 1, 2, 3, 4, 5, 9, 20, 40] if distribution is None else distribution
+        ),
     )
     bundle.diff.changed = changed
     bundle.attribution.touched_proportion = touched / 100
@@ -24,11 +31,19 @@ class TestWeights:
     ) -> None:
         assert weighted(changed).get_length() == expected
 
-    @pytest.mark.parametrize("fan_in,expected", [(0, 1), (1, 2), (4, 2), (5, 3)])
-    def test_get_criticality_fan_in_returns_banded_score(
+    @pytest.mark.parametrize("fan_in,expected", [(0, 1), (3, 2), (9, 2), (40, 3)])
+    def test_get_criticality_fan_in_rank_returns_banded_score(
         self, fan_in: int, expected: int
     ) -> None:
         assert weighted(fan_in=fan_in).get_criticality() == expected
+
+    def test_get_criticality_same_fan_in_in_a_larger_repository_ranks_lower(
+        self,
+    ) -> None:
+        assert weighted(fan_in=5, distribution=[5] + [9] * 19).get_criticality() == 1
+
+    def test_get_criticality_no_distribution_returns_one(self) -> None:
+        assert weighted(fan_in=40, distribution=[]).get_criticality() == 1
 
     @pytest.mark.parametrize(
         "risk,expected",
@@ -46,7 +61,7 @@ class TestWeights:
         assert weighted(risk=risk).get_risk() == expected
 
     def test_get_weight_several_dimensions_returns_highest(self) -> None:
-        assert weighted(100, 5, []).get_weight() == 3
+        assert weighted(100, 40, []).get_weight() == 3
 
     def test_get_weight_nothing_demanding_returns_one(self) -> None:
         assert weighted(100, 0, []).get_weight() == 1

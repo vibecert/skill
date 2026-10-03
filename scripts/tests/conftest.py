@@ -61,6 +61,7 @@ def evidence_of(
     bash_commands: list[str] | None = None,
     checks: CheckInfo | None = None,
     comment_density: float = 0.0,
+    fan_in_distribution: list[int] | None = None,
     revised: int = 0,
     revised_proportion: float = 0.0,
 ) -> Evidence:
@@ -68,7 +69,11 @@ def evidence_of(
         schema_version=EvidenceCollector.SCHEMA,
         collected_at="2026-01-01T00:00:00+00:00",
         repository=RepositoryInfo(
-            root="/repo", name="repo", remote="", comment_density=comment_density
+            root="/repo",
+            name="repo",
+            remote="",
+            comment_density=comment_density,
+            fan_in_distribution=fan_in_distribution or [],
         ),
         branch=BranchInfo(
             name="feat/foo",
