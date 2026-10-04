@@ -72,15 +72,19 @@ not a score.
 ```
 for file in index.html score.json badge.json; do
   path="<id>/$file"
-  sha=$(gh api "repos/<repository>/contents/$path" --jq .sha 2>/dev/null)
+  sha=$(gh api "repos/<repository>/contents/$path" --jq .sha 2>/dev/null) || sha=""
+  verb=add; existing=()
+  [ -n "$sha" ] && { verb=rescore; existing=(-f "sha=$sha"); }
   gh api --method PUT "repos/<repository>/contents/$path" \
-    -f message="feat: ${sha:+rescore}${sha:-add} certificate <id>" \
-    -f content="$(base64 -w0 <directory>/$file)" \
-    ${sha:+-f sha="$sha"} >/dev/null
+    -f "message=feat: $verb certificate <id>" \
+    -f "content=$(base64 -w0 <directory>/$file)" \
+    "${existing[@]}" >/dev/null
 done
 ```
 
 - If the push is refused for want of access, say so and stop. The author publishes their own certificates; do not offer to put them somewhere the author does not own.
+- **Important** `gh` prints a 404 body to standard output, so a missing file leaves that JSON in `sha` unless the `|| sha=""` resets it. Without it the error text lands in the commit message.
+- **Important** pass the existing blob through an array. Only bash word-splits `${sha:+-f sha="$sha"}` into two arguments; zsh passes one, and the update fails with a 422.
 - A certificate's identifier is fixed by the repository, branch and merge base, so rescoring the same branch replaces its certificate rather than adding another.
 - Finish by printing the certificate's address.
 - The rendered certificate ends with a section offering a commit trailer and a pull request snippet. Print them as given.
