@@ -30,11 +30,6 @@ class TestCertificateSite:
             colour,
         )
 
-    def test_get_url_host_returns_certificate_address(self) -> None:
-        assert CertificateSite(certificate_document(), pathlib.Path("/site")).get_url(
-            "https://vibecert.github.io"
-        ) == ("https://vibecert.github.io/abc1234")
-
     def test_write_certificate_writes_three_files(self, tmp_path: pathlib.Path) -> None:
         written = CertificateSite(certificate_document(), tmp_path).write()
         assert sorted(path.name for path in written.iterdir()) == [

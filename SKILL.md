@@ -59,24 +59,30 @@ not a score.
 
 # Publishing
 
-- Certificates live at `https://vibecert.github.io/<id>`, served from the `vibecert/vibecert.github.io` repository.
-- The site is set up once, not per run: `vibecert-publish ... --index` also writes the root page, which must be pushed before GitHub Pages can be enabled on an empty repository.
-- Add the three files through the GitHub contents API, which only ever touches this certificate's own path. Do not clone the site, and never force push.
+- A certificate is served from the author's own GitHub Pages site, not a shared one. A central site would imply someone else had vouched for the score, and nothing in the rubric supports that.
+- You do not work the address out. `vibecert-score` reads the scored repository's own remote and puts the resulting address on the certificate, so a repository owned by `foo` publishes to `foo.github.io/vibecert`. Pass `--site-url` only when the author asks for somewhere else.
+- `vibecert-publish` prints the repository to push to, the identifier, and the directory it wrote. Substitute those three into the commands below, and assume none of them.
+- Where the repository names no GitHub owner, the certificate is scored but has no address and cannot be published. Say so, and ask the author where it should live rather than choosing for them.
+- Check the site exists before publishing, with `gh repo view <repository>`. A missing one reports 404, which is not a permissions problem.
+- Where it does not exist, stop and ask the author whether to create it. It will be a public repository, and every certificate in it is public. Do not create it without a clear yes, and do not publish their certificate anywhere else in the meantime.
+- On a yes, set it up once: create it with `gh repo create <repository> --public`, push the root page that `vibecert-publish ... --index` writes, then enable Pages with `gh api --method POST repos/<repository>/pages -f 'source[branch]=main' -f 'source[path]=/'`. A 409 means Pages was already on, which is fine.
+- A repository named `<owner>.github.io` turns Pages on by itself once it has content. A project repository such as `<owner>/vibecert` does not, so the enabling step matters there.
+- Add the files through the GitHub contents API, which only ever touches this certificate's own path. Do not clone the site, and never force push.
 
 ```
-id=$(basename <scratch>/site/*)
 for file in index.html score.json badge.json; do
-  path="$id/$file"
-  sha=$(gh api "repos/vibecert/vibecert.github.io/contents/$path" --jq .sha 2>/dev/null)
-  gh api --method PUT "repos/vibecert/vibecert.github.io/contents/$path" \
-    -f message="feat: ${sha:+rescore}${sha:-add} certificate $id" \
-    -f content="$(base64 -w0 <scratch>/site/$id/$file)" \
+  path="<id>/$file"
+  sha=$(gh api "repos/<repository>/contents/$path" --jq .sha 2>/dev/null)
+  gh api --method PUT "repos/<repository>/contents/$path" \
+    -f message="feat: ${sha:+rescore}${sha:-add} certificate <id>" \
+    -f content="$(base64 -w0 <directory>/$file)" \
     ${sha:+-f sha="$sha"} >/dev/null
 done
 ```
 
+- If the push is refused for want of access, say so and stop. The author publishes their own certificates; do not offer to put them somewhere the author does not own.
 - A certificate's identifier is fixed by the repository, branch and merge base, so rescoring the same branch replaces its certificate rather than adding another.
-- Finish by printing the certificate's address, `https://vibecert.github.io/<id>`.
+- Finish by printing the certificate's address.
 - The rendered certificate ends with a section offering a commit trailer and a pull request snippet. Print them as given.
 - **Important** do not write either into a commit, a pull request or any file. Where the score goes is the author's decision, not yours.
 - **Important** the identifier is all a private repository publishes. Check that `--private` was passed before publishing one, because the page names the repository and branch otherwise.

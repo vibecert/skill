@@ -70,18 +70,6 @@ class CertificateSite:
             "color": self._colour(),
         }
 
-    def get_url(self, host: str) -> str:
-        """Return the address this certificate will be served from.
-
-        Args:
-            host (str): The site's base address, without a trailing slash.
-
-        Returns:
-            str: The certificate's address.
-
-        """
-        return f"{host}/{self.__document.identifier}"
-
     def _colour(self) -> str:
         if self.__document.score is None:
             return "lightgrey"

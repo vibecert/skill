@@ -5,6 +5,7 @@ from vibecert.bundle_types import Evidence
 from vibecert.certificate_types import CertificateDocument, MetricResult, WeightResult
 from vibecert.metrics import DeterministicMetrics
 from vibecert.rubric import Thresholds
+from vibecert.site import SiteAddress
 from vibecert.vibecert_types import Band
 from vibecert.weights import Weights
 
@@ -30,15 +31,22 @@ class Certificate:
         evidence (Evidence): The bundle for the branch under assessment.
         judged (list[Band]): The bands for the metrics that need judgement.
         private (bool): Whether to withhold the repository and branch names.
+        site (str): Where the certificate will be served from, or empty to
+            derive it from the scored repository's own remote.
 
     """
 
     SCHEMA: str = "vibecert/certificate@1"
 
     def __init__(
-        self, evidence: Evidence, judged: list[Band], private: bool = False
+        self,
+        evidence: Evidence,
+        judged: list[Band],
+        private: bool = False,
+        site: str = "",
     ) -> None:
         self.__evidence: Evidence = evidence
+        self.__site: str = site or SiteAddress.derive(evidence.repository.remote)
         self.__private: bool = private
         self.__weights: Weights = Weights(evidence)
         self.__bands: dict[str, Band] = {
@@ -58,6 +66,7 @@ class Certificate:
             rubrics_version=Thresholds.VERSION,
             issued_at=datetime.datetime.now(datetime.UTC).isoformat(),
             identifier=self.get_identifier(),
+            site=self.__site,
             private=self.__private,
             repository=None if self.__private else self.__evidence.repository.name,
             branch=None if self.__private else self.__evidence.branch.name,

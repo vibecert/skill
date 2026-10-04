@@ -13,6 +13,7 @@ from vibecert.json_values import Json
 from vibecert.metrics import DeterministicMetrics
 from vibecert.publish import CertificateSite
 from vibecert.render import CertificateMarkdown
+from vibecert.site import SiteAddress
 from vibecert.transcript import TranscriptStore
 from vibecert.vibecert_types import Band
 
@@ -136,6 +137,7 @@ class ScoreCli:
                     MetricsCli._load(pathlib.Path(arguments.bundle)),
                     ScoreCli._judged(pathlib.Path(arguments.judged)),
                     arguments.private,
+                    arguments.site_url,
                 ).get_document(),
                 arguments.format,
             ),
@@ -177,6 +179,7 @@ class ScoreCli:
             "--format", choices=("markdown", "json"), default="markdown"
         )
         parser.add_argument("--private", action="store_true")
+        parser.add_argument("--site-url", default="")
         parser.add_argument("--out", default=None)
         return parser
 
@@ -188,15 +191,19 @@ class PublishCli:
     def run() -> None:
         """Write one certificate's page, score and badge into a site directory."""
         arguments: argparse.Namespace = PublishCli._parser().parse_args()
-        site: CertificateSite = CertificateSite(
-            CertificateDocument.model_validate_json(
-                pathlib.Path(arguments.certificate).read_text()
-            ),
-            pathlib.Path(arguments.site),
+        document: CertificateDocument = CertificateDocument.model_validate_json(
+            pathlib.Path(arguments.certificate).read_text()
         )
+        if not document.site:
+            raise ValueError(
+                "this certificate has no address, so rescore with --site-url"
+            )
+        site: CertificateSite = CertificateSite(document, pathlib.Path(arguments.site))
         if arguments.index:
             site.write_index()
-        print(site.write())
+        print(f"repository: {SiteAddress.repository(document.site)}")
+        print(f"identifier: {document.identifier}")
+        print(f"directory: {site.write()}")
 
     @staticmethod
     def _parser() -> argparse.ArgumentParser:

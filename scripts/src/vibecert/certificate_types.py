@@ -23,6 +23,7 @@ class CertificateDocument(BaseModel):
     rubrics_version: str
     issued_at: str
     identifier: str
+    site: str
     private: bool
     repository: str | None
     branch: str | None

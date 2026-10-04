@@ -77,7 +77,7 @@ class TestCertificateMarkdown:
 class TestCertificateSnippets:
     def test_get_trailer_certified_names_the_score_and_address(self) -> None:
         assert CertificateSnippets(certificate_document(score=2.3)).get_trailer() == (
-            "VibeCert: 2.3/3 (https://vibecert.github.io/abc1234)"
+            "VibeCert: 2.3/3 (https://foo.github.io/vibecert/abc1234)"
         )
 
     def test_get_trailer_fits_a_commit_body_line(self) -> None:
@@ -95,7 +95,7 @@ class TestCertificateSnippets:
 
     def test_get_url_returns_the_published_address(self) -> None:
         assert CertificateSnippets(certificate_document()).get_url() == (
-            "https://vibecert.github.io/abc1234"
+            "https://foo.github.io/vibecert/abc1234"
         )
 
 
@@ -105,3 +105,12 @@ class TestSharingSection:
 
     def test_render_offers_a_pull_request_snippet(self) -> None:
         assert "In a pull request:" in rendered()
+
+    def test_render_without_an_address_says_it_cannot_be_published(self) -> None:
+        bundle = evidence_of([file_of("foo.py", ".py", 100, code=100)])
+        bundle.repository.remote = "/srv/git/local.git"
+        bundle.attribution.touched_proportion = 1.0
+        assert (
+            "no address"
+            in CertificateMarkdown(Certificate(bundle, []).get_document()).render()
+        )

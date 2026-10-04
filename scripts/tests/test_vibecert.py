@@ -4,9 +4,9 @@ import unittest.mock
 import pytest
 import pytest_mock
 
-from tests.conftest import evidence_of
+from tests.conftest import certificate_document, evidence_of
 from vibecert.collector import EvidenceCollector
-from vibecert.vibecert import Cli, MetricsCli, ScoreCli
+from vibecert.vibecert import Cli, MetricsCli, PublishCli, ScoreCli
 
 
 class TestCli:
@@ -86,3 +86,25 @@ class TestScoreCli:
         assert ScoreCli._parser().parse_args(["/b.json", "/j.json"]).judged == (
             "/j.json"
         )
+
+
+class TestPublishCli:
+    def test_run_certificate_without_an_address_refuses(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        document = certificate_document()
+        document.site = ""
+        mocker.patch.object(
+            pathlib.Path, "read_text", return_value=document.model_dump_json()
+        )
+        mocker.patch.object(
+            PublishCli,
+            "_parser",
+            return_value=mocker.MagicMock(
+                parse_args=lambda: mocker.MagicMock(
+                    certificate="/c.json", site="/site", index=False
+                )
+            ),
+        )
+        with pytest.raises(ValueError):
+            PublishCli.run()

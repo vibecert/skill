@@ -76,7 +76,7 @@ def evidence_of(
         repository=RepositoryInfo(
             root="/repo",
             name="repo",
-            remote="",
+            remote="git@github.com:foo/bar.git",
             comment_density=comment_density,
             fan_in_distribution=fan_in_distribution or [],
         ),
@@ -156,6 +156,7 @@ def certificate_document(
         rubrics_version="vibecert/rubrics@1",
         issued_at="2026-01-01T00:00:00+00:00",
         identifier="abc1234",
+        site="https://foo.github.io/vibecert",
         private=private,
         repository=None if private else "repo",
         branch=None if private else "feat/foo",

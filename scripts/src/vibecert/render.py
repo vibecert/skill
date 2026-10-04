@@ -1,5 +1,4 @@
 from vibecert.certificate_types import CertificateDocument, MetricResult
-from vibecert.page import CertificatePage
 
 
 class CertificateMarkdown:
@@ -49,6 +48,11 @@ class CertificateMarkdown:
 
     def _share(self) -> list[str]:
         snippets: CertificateSnippets = CertificateSnippets(self.__document)
+        if not self.__document.site:
+            return [
+                "This certificate has no address, because the repository names "
+                "no GitHub owner. Rescore with `--site-url` to publish it."
+            ]
         return [
             "### To share",
             "",
@@ -158,7 +162,7 @@ class CertificateSnippets:
             str: The certificate's address.
 
         """
-        return f"{CertificatePage.SITE}/{self.__document.identifier}"
+        return f"{self.__document.site}/{self.__document.identifier}"
 
     def _score(self) -> str:
         return (
