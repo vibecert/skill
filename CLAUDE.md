@@ -153,6 +153,9 @@ Pass such arguments through an array.
 A session belongs to a repository if its working directory or any file it edited lies inside it, and only edits inside the repository are counted.
 Matching on working directory alone missed work done in a second repository by `cd` from a session started in the first.
 
+Inline `$(base64 ...)` on a backslash-continued `gh api` line breaks in zsh, with "command not found" for it and later commands.
+Write the encoding to a scratch file and pass it with `-F content=@<file>`.
+
 Git emits timestamps as `+01:00` and transcripts emit `Z`, so compare them as instants rather than strings.
 
 In auto mode there are no `Edit` or `Write` tool calls at all; edits arrive as `bashEditDiff` on a `Bash` result.
