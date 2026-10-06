@@ -104,8 +104,8 @@ Hand-rolled patterns flagged `.gitignore` and `uv.lock` as network risks.
 `rubric.py` holds thresholds; `detection.py` holds domain facts such as comment markers and check commands.
 A metric should band emitted facts, not do its own detection.
 
-Certificates are served from the author's own Pages site, not a shared one.
-A central site would imply someone else had vouched for a self-assessment.
+Certificates are served from `https://vibecert.github.io` by default, which the skill passes as `--site-url` on every `vibecert-score` call.
+`SiteAddress.derive` still computes the author's own `<owner>.github.io/vibecert`, but the skill overrides it unless the author names somewhere else.
 The site root deliberately does not list certificates: listing them would make private ones enumerable and undo the redaction.
 
 The tool generates files; the skill transports them.

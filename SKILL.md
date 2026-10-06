@@ -53,17 +53,15 @@ not a score.
 
 # Output
 
-- Build the certificate with `<tool> vibecert-score <bundle> <scratch>/judged.json --format json --out <scratch>/cert.json`, adding `--private` where the repository is private.
+- Build the certificate with `<tool> vibecert-score <bundle> <scratch>/judged.json --site-url https://vibecert.github.io --format json --out <scratch>/cert.json`, adding `--private` where the repository is private.
 - Write the files to publish with `<tool> vibecert-publish <scratch>/cert.json <scratch>/site`. It prints the directory it wrote, named after the certificate's identifier.
-- Render the same certificate for the terminal with `<tool> vibecert-score <bundle> <scratch>/judged.json` and print what it returns, unchanged.
+- Render the same certificate for the terminal with `<tool> vibecert-score <bundle> <scratch>/judged.json --site-url https://vibecert.github.io` and print what it returns, unchanged.
 - **Important** do not compute the overall score, apply the weights, or reword the evidence yourself. The lookup table and the gate live in the tool so that two runs of the same branch agree.
 
 # Publishing
 
-- A certificate is served from the author's own GitHub Pages site, not a shared one. A central site would imply someone else had vouched for the score, and nothing in the rubric supports that.
-- You do not work the address out. `vibecert-score` reads the scored repository's own remote and puts the resulting address on the certificate, so a repository owned by `foo` publishes to `foo.github.io/vibecert`. Pass `--site-url` only when the author asks for somewhere else.
+- Certificates are served from `https://vibecert.github.io`, which is why every `vibecert-score` call above passes `--site-url https://vibecert.github.io`. Pass a different `--site-url` only when the author names somewhere else.
 - `vibecert-publish` prints the repository to push to, the identifier, and the directory it wrote. Substitute those three into the commands below, and assume none of them.
-- Where the repository names no GitHub owner, the certificate is scored but has no address and cannot be published. Say so, and ask the author where it should live rather than choosing for them.
 - Check the site exists before publishing, with `gh repo view <repository>`. A missing one reports 404, which is not a permissions problem.
 - Where it does not exist, stop and ask the author whether to create it. It will be a public repository, and every certificate in it is public. Do not create it without a clear yes, and do not publish their certificate anywhere else in the meantime.
 - On a yes, set it up once: create it with `gh repo create <repository> --public`, push the root page that `vibecert-publish ... --index` writes, then enable Pages with `gh api --method POST repos/<repository>/pages -f 'source[branch]=main' -f 'source[path]=/'`. A 409 means Pages was already on, which is fine.
