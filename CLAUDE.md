@@ -111,6 +111,9 @@ The site root deliberately does not list certificates: listing them would make p
 The tool generates files; the skill transports them.
 Everything else here is read-only by construction, and the certifier must not be able to modify what it scores.
 
+One certificate covers one repository.
+Work spanning several gets one certificate each, never merged by hand.
+
 The tool never writes a score into a commit, a pull request or a file.
 It prints text to paste, because where a score goes is the author's decision.
 
@@ -155,6 +158,8 @@ Matching on working directory alone missed work done in a second repository by `
 
 Inline `$(base64 ...)` on a backslash-continued `gh api` line breaks in zsh, with "command not found" for it and later commands.
 Write the encoding to a scratch file and pass it with `-F content=@<file>`.
+
+In auto mode a looped `gh api` read is refused even though it is read-only, so verify a push with one `curl` against the raw file.
 
 Git emits timestamps as `+01:00` and transcripts emit `Z`, so compare them as instants rather than strings.
 

@@ -7,6 +7,7 @@ disallowed-tools: Edit, Write, NotebookEdit
 
 - You do not need to print any output either during or after your working documenting your thinking or actions. Always minimise token usage.
 - You will be asked to score the practice behind a Git branch. Assess the current branch against `main`, unless another base is given.
+- Where the work spans several repositories, run everything below once per repository, passing each one's path to `--repo`. Each gets its own certificate. Never merge two certificates, or their scores, by hand.
 - **Important** you must not modify the code you are scoring. Only read it.
 - Below, `<tool>` is `uv run --project ~/.claude/skills/vibecert/scripts`, `<bundle>` is `<scratch>/vibecert.json` and `<scratch>` is your scratch directory.
 
@@ -87,6 +88,7 @@ done
 - **Important** write the encoded file to scratch and pass it with `-F content=@`, as above. Substituting `$(base64 ...)` inline on a continued line breaks in zsh: `base64`, and later commands in the same invocation, report "command not found" and nothing is written.
 - **Important** pass the existing blob through an array. Only bash word-splits `${sha:+-f sha="$sha"}` into two arguments; zsh passes one, and the update fails with a 422.
 - A certificate's identifier is fixed by the repository, branch and merge base, so rescoring the same branch replaces its certificate rather than adding another.
+- Verify the push with a single `curl -fsS https://raw.githubusercontent.com/<repository>/main/<id>/score.json`. Do not loop `gh api` reads to check it: auto mode refuses the loop even though it only reads.
 - Finish by printing the certificate's address.
 - The rendered certificate ends with a section offering a commit trailer and a pull request snippet. Print them as given.
 - **Important** do not write either into a commit, a pull request or any file. Where the score goes is the author's decision, not yours.
