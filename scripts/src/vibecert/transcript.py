@@ -298,7 +298,7 @@ class TranscriptStore:
     def find_sessions(
         self, root: pathlib.Path, start: str, end: str
     ) -> list[TranscriptSession]:
-        """Return the sessions worked inside a repository during a window.
+        """Return the sessions that worked in or wrote to a repository during a window.
 
         Args:
             root (pathlib.Path): The repository root.
@@ -326,11 +326,28 @@ class TranscriptStore:
         ]
 
     @staticmethod
-    def _in_repository(session: TranscriptSession, root: pathlib.Path) -> bool:
+    def is_inside(path: str, root: pathlib.Path) -> bool:
+        """Return whether a path lies within a repository.
+
+        Args:
+            path (str): An absolute path, possibly through a symlink.
+            root (pathlib.Path): The repository root.
+
+        Returns:
+            bool: True when the resolved path is the root or beneath it.
+
+        """
         return any(
             resolved == str(root) or resolved.startswith(str(root) + "/")
-            for directory in session.get_working_directories()
-            for resolved in (str(pathlib.Path(directory).resolve()),)
+            for resolved in (str(pathlib.Path(path).resolve()),)
+        )
+
+    @classmethod
+    def _in_repository(cls, session: TranscriptSession, root: pathlib.Path) -> bool:
+        return any(
+            cls.is_inside(path, root)
+            for path in session.get_working_directories()
+            | {edit.path for edit in session.get_edits()}
         )
 
     @classmethod

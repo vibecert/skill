@@ -150,6 +150,9 @@ Pass such arguments through an array.
 
 `~/.claude/skills` is a symlink to this repository, so session directories and edit paths must be resolved before comparing them to a repository root.
 
+A session belongs to a repository if its working directory or any file it edited lies inside it, and only edits inside the repository are counted.
+Matching on working directory alone missed work done in a second repository by `cd` from a session started in the first.
+
 Git emits timestamps as `+01:00` and transcripts emit `Z`, so compare them as instants rather than strings.
 
 In auto mode there are no `Edit` or `Write` tool calls at all; edits arrive as `bashEditDiff` on a `Bash` result.
@@ -172,6 +175,7 @@ Metric 1 has never been run twice, so the variance of the judged half is unmeasu
 Fan-in is quadratic in file count, fine at 46 files and slow at thousands.
 Risk findings come from ruff, so only Python is covered.
 Whether checks ran is detected repository-wide rather than scoped to the changed files.
+A session that worked across two repositories contributes all its prompts and tool calls to both, since a prompt is not tied to a repository.
 Sensitive-data matching strips quotes and comments per line, so a term inside a multi-line docstring still matches.
 
 ## Verifying

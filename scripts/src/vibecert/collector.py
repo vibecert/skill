@@ -69,7 +69,10 @@ class EvidenceCollector:
             self.__repository.get_root(), self._window_start(merge_base), self._now()
         )
         edits: list[EditHunk] = [
-            edit for session in sessions for edit in session.get_edits()
+            edit
+            for session in sessions
+            for edit in session.get_edits()
+            if TranscriptStore.is_inside(edit.path, self.__repository.get_root())
         ]
         prompts: list[Prompt] = [
             prompt for session in sessions for prompt in session.get_prompts()

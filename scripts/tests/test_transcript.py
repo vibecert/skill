@@ -222,6 +222,21 @@ class TestTranscriptStore:
             == 1
         )
 
+    def test_find_sessions_edited_from_another_directory_returns_session(
+        self, store_mocks: unittest.mock.MagicMock
+    ) -> None:
+        store_mocks.return_value = [
+            self._session("/other", ("2026-01-02", "2026-01-03"), ["/repo/foo.py"])
+        ]
+        assert (
+            len(
+                TranscriptStore(pathlib.Path("/projects")).find_sessions(
+                    pathlib.Path("/repo"), "2026-01-01", "2026-01-04"
+                )
+            )
+            == 1
+        )
+
     def test_find_sessions_symlinked_working_directory_resolves_to_repository(
         self, store_mocks: unittest.mock.MagicMock, mocker: pytest_mock.MockerFixture
     ) -> None:
@@ -281,9 +296,24 @@ class TestTranscriptStore:
             == []
         )
 
+    @pytest.mark.parametrize(
+        "path,expected",
+        [("/repo", True), ("/repo/foo.py", True), ("/repository/foo.py", False)],
+    )
+    def test_is_inside_path_returns_whether_beneath_root(
+        self, path: str, expected: bool
+    ) -> None:
+        assert TranscriptStore.is_inside(path, pathlib.Path("/repo")) is expected
+
     @staticmethod
-    def _session(directory: str, span: tuple[str, str]) -> unittest.mock.MagicMock:
+    def _session(
+        directory: str, span: tuple[str, str], edited: list[str] | None = None
+    ) -> unittest.mock.MagicMock:
         session: unittest.mock.MagicMock = unittest.mock.MagicMock()
         session.get_working_directories.return_value = {directory}
         session.get_span.return_value = span
+        session.get_edits.return_value = [
+            EditHunk("foo", "2026-01-02", "bash", path, ["alpha"], 0, "")
+            for path in edited or []
+        ]
         return session

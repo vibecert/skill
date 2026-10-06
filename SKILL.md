@@ -13,6 +13,7 @@ disallowed-tools: Edit, Write, NotebookEdit
 # Gathering evidence
 
 - Collect the evidence with `<tool> vibecert --repo . --out <bundle>`.
+- A session counts towards a repository if it started there or wrote files there, so work done in one repository from a session started in another is still found.
 - **Important** always write to a file. The bundle runs to tens of thousands of tokens and must not be printed, nor read whole.
 - If the collector finds no sessions, say so and stop. There is nothing to score.
 
