@@ -111,6 +111,9 @@ The site root deliberately does not list certificates: listing them would make p
 The tool generates files; the skill transports them.
 Everything else here is read-only by construction, and the certifier must not be able to modify what it scores.
 
+The skill publishes only a certificate whose `certified` is true.
+An uncertified one has a `null` score, and the author is told the gate's reason instead.
+
 One certificate covers one repository.
 Work spanning several gets one certificate each, never merged by hand.
 

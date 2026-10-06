@@ -55,14 +55,14 @@ not a score.
 # Output
 
 - Build the certificate with `<tool> vibecert-score <bundle> <scratch>/judged.json --site-url https://vibecert.github.io --format json --out <scratch>/cert.json`, adding `--private` where the repository is private.
-- Write the files to publish with `<tool> vibecert-publish <scratch>/cert.json <scratch>/site`. It prints the directory it wrote, named after the certificate's identifier.
 - Render the same certificate for the terminal with `<tool> vibecert-score <bundle> <scratch>/judged.json --site-url https://vibecert.github.io` and print what it returns, unchanged.
 - **Important** do not compute the overall score, apply the weights, or reword the evidence yourself. The lookup table and the gate live in the tool so that two runs of the same branch agree.
 
 # Publishing
 
+- **Important** publish only a certified result. Read `certified` from `<scratch>/cert.json`. Where it is `false` (its `score` is then `null`), stop and tell the author why, quoting the gate's reason from the rendered certificate, and publish nothing.
 - Certificates are served from `https://vibecert.github.io`, which is why every `vibecert-score` call above passes `--site-url https://vibecert.github.io`. Pass a different `--site-url` only when the author names somewhere else.
-- `vibecert-publish` prints the repository to push to, the identifier, and the directory it wrote. Substitute those three into the commands below, and assume none of them.
+- Write the files to publish with `<tool> vibecert-publish <scratch>/cert.json <scratch>/site`. It prints the repository to push to, the identifier, and the directory it wrote. Substitute those three into the commands below, and assume none of them.
 - Check the site exists before publishing, with `gh repo view <repository>`. A missing one reports 404, which is not a permissions problem.
 - Where it does not exist, stop and ask the author whether to create it. It will be a public repository, and every certificate in it is public. Do not create it without a clear yes, and do not publish their certificate anywhere else in the meantime.
 - On a yes, set it up once: create it with `gh repo create <repository> --public`, push the root page that `vibecert-publish ... --index` writes, then enable Pages with `gh api --method POST repos/<repository>/pages -f 'source[branch]=main' -f 'source[path]=/'`. A 409 means Pages was already on, which is fine.
