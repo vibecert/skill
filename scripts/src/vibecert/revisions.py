@@ -42,7 +42,7 @@ class RevisionCounter:
     @staticmethod
     def _is_formatter(edit: EditHunk) -> bool:
         return any(
-            command in edit.command
+            CheckRegistry.invokes(edit.command, command)
             for check in CheckRegistry.CLASSES
             if check.name == "format"
             for command in check.commands

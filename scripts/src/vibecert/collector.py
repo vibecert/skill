@@ -23,6 +23,7 @@ from vibecert.criticality import FanInCounter
 from vibecert.detection import CheckRegistry, ImportPatterns
 from vibecert.git_repository import GitRepository
 from vibecert.guidelines import GuidelineIndex
+from vibecert.make_targets import MakeTargets
 from vibecert.revisions import RevisionCounter
 from vibecert.risk import RiskScanner
 from vibecert.transcript import TranscriptSession, TranscriptStore
@@ -312,18 +313,28 @@ class EvidenceCollector:
                     for check in CheckRegistry.CLASSES
                     for command in check.commands
                     if any(
-                        command in invocation
-                        for session in sessions
-                        for invocation in session.get_bash_commands()
+                        CheckRegistry.invokes(invocation, command)
+                        for invocation in self._invocations(sessions)
                     )
                 }
             ),
             configs=configs,
         )
 
+    def _invocations(self, sessions: list[TranscriptSession]) -> list[str]:
+        targets: MakeTargets = MakeTargets(
+            GitRepository.read_lines(self.__repository.get_root() / "Makefile")
+        )
+        return [
+            invocation
+            for session in sessions
+            for command in session.get_bash_commands()
+            for invocation in (command, *targets.expand(command))
+        ]
+
     @staticmethod
     def _governs(config: str, changed: list[str]) -> bool:
-        return any(
+        return config.startswith(CheckRegistry.WORKFLOWS) or any(
             path.startswith(config.rsplit("/", 1)[0] + "/") or "/" not in config
             for path in changed
         )
@@ -331,13 +342,14 @@ class EvidenceCollector:
     def _check_configs(self) -> dict[str, list[str]]:
         return {
             path: CheckRegistry.configured_by(
-                pathlib.PurePath(path).name,
+                path,
                 "\n".join(
                     GitRepository.read_lines(self.__repository.get_root() / path)
                 ),
             )
             for path in self.__repository.get_tracked_files()
-            if any(
+            if CheckRegistry.is_runner(path)
+            or any(
                 pathlib.PurePath(path).name in check.configs
                 for check in CheckRegistry.CLASSES
             )

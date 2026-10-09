@@ -1,3 +1,4 @@
+import pathlib
 import re
 
 from vibecert.vibecert_types import CheckClass
@@ -46,7 +47,9 @@ class CheckRegistry:
     CLASSES: tuple[CheckClass, ...] = (
         CheckClass(
             "behavioural",
-            frozenset({".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".java", ".rs"}),
+            frozenset(
+                {".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".java", ".rs", ".sh"}
+            ),
             {
                 "pytest.ini": "",
                 "tox.ini": "",
@@ -55,7 +58,17 @@ class CheckRegistry:
                 "Cargo.toml": "[[test]]",
             },
             frozenset(
-                {"pytest", "jest", "vitest", "go test", "cargo test", "npm test"}
+                {
+                    "pytest",
+                    "jest",
+                    "vitest",
+                    "go test",
+                    "cargo test",
+                    "npm test",
+                    "make test",
+                    "shunit2",
+                    "bats",
+                }
             ),
         ),
         CheckClass(
@@ -84,6 +97,7 @@ class CheckRegistry:
                 "eslint.config.js": "",
                 ".markdownlint.json": "",
                 ".yamllint": "",
+                ".shellcheckrc": "",
                 "tsconfig.json": "",
                 "pyproject.toml": "[tool.ruff.lint",
             },
@@ -96,6 +110,8 @@ class CheckRegistry:
                     "pyright",
                     "markdownlint",
                     "shellcheck",
+                    "sh -n",
+                    "bash -n",
                     "tflint",
                     "yamllint",
                     "tsc",
@@ -105,7 +121,18 @@ class CheckRegistry:
         CheckClass(
             "format",
             frozenset(
-                {".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".md", ".json"}
+                {
+                    ".py",
+                    ".js",
+                    ".jsx",
+                    ".ts",
+                    ".tsx",
+                    ".go",
+                    ".rs",
+                    ".md",
+                    ".json",
+                    ".sh",
+                }
             ),
             {
                 ".prettierrc": "",
@@ -113,27 +140,74 @@ class CheckRegistry:
                 "ruff.toml": "",
                 "pyproject.toml": "[tool.ruff",
             },
-            frozenset({"ruff format", "prettier", "black", "gofmt", "rustfmt"}),
+            frozenset(
+                {"ruff format", "prettier", "black", "gofmt", "rustfmt", "shfmt"}
+            ),
         ),
     )
 
+    RUNNERS: frozenset[str] = frozenset(
+        {"Makefile", ".gitlab-ci.yml", ".pre-commit-config.yaml"}
+    )
+
+    WORKFLOWS: str = ".github/workflows/"
+
     @classmethod
-    def configured_by(cls, name: str, content: str) -> list[str]:
-        """Return the check classes a configuration file establishes.
+    def configured_by(cls, path: str, content: str) -> list[str]:
+        """Return the check classes a file establishes.
+
+        A configuration file establishes a class by its name and contents. A file
+        that runs commands, such as a CI workflow or a Makefile, establishes the
+        classes whose commands it invokes.
 
         Args:
-            name (str): The file name, without its directory.
+            path (str): The repository-relative path of the file.
             content (str): The file's contents.
 
         Returns:
             list[str]: Names of the classes the file configures, possibly none.
 
         """
+        name: str = pathlib.PurePath(path).name
         return [
             check.name
             for check in cls.CLASSES
-            if name in check.configs and check.configs[name] in content
+            if (name in check.configs and check.configs[name] in content)
+            or (
+                cls.is_runner(path)
+                and any(cls.invokes(content, command) for command in check.commands)
+            )
         ]
+
+    @classmethod
+    def is_runner(cls, path: str) -> bool:
+        """Return whether a file runs commands, as a CI workflow or Makefile does.
+
+        Args:
+            path (str): The repository-relative path of the file.
+
+        Returns:
+            bool: Whether the file can configure checks by invoking them.
+
+        """
+        return pathlib.PurePath(path).name in cls.RUNNERS or path.startswith(
+            cls.WORKFLOWS
+        )
+
+    @staticmethod
+    def invokes(text: str, command: str) -> bool:
+        """Return whether text invokes a command as a whole word.
+
+        Args:
+            text (str): A shell command, or a file of them.
+            command (str): The command to look for, such as "sh -n".
+
+        Returns:
+            bool: Whether the command appears without letters, digits or hyphens
+                either side, so "sh -n" is not found inside "git push -n".
+
+        """
+        return re.search(rf"(?<![\w-]){re.escape(command)}(?![\w-])", text) is not None
 
 
 class SensitiveData:

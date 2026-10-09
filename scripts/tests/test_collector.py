@@ -57,6 +57,30 @@ class TestEvidenceCollector:
         mocker.patch.object(TranscriptStore, "find_sessions", return_value=[session])
         assert collector.collect().attribution.generated == 1
 
+    def test_invocations_make_command_returns_command_and_recipe(
+        self, collector: EvidenceCollector, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            GitRepository, "read_lines", return_value=["test:", "\tshunit2 foo.sh"]
+        )
+        session: unittest.mock.MagicMock = mocker.MagicMock()
+        session.get_bash_commands.return_value = ["make test"]
+        assert collector._invocations([session]) == ["make test", "shunit2 foo.sh"]
+
+    @pytest.mark.parametrize(
+        "config,changed,expected",
+        [
+            (".github/workflows/ci.yml", ["foo.sh"], True),
+            ("Makefile", ["foo.sh"], True),
+            ("tools/Makefile", ["foo.sh"], False),
+            ("tools/Makefile", ["tools/foo.sh"], True),
+        ],
+    )
+    def test_governs_config_location_reports_whether_it_covers_changes(
+        self, config: str, changed: list[str], expected: bool
+    ) -> None:
+        assert EvidenceCollector._governs(config, changed) is expected
+
     def test_existing_missing_paths_returns_only_real_files(self) -> None:
         assert (
             EvidenceCollector._existing({"/no/such/rules.md"}, pathlib.Path("/repo"))

@@ -55,13 +55,57 @@ class TestCheckRegistry:
             ("pyproject.toml", "[tool.ruff.lint]", ["static", "format"]),
             ("pyproject.toml", "[project]", []),
             (".markdownlint.json", "{}", ["static"]),
+            (".shellcheckrc", "", ["static"]),
             ("README.md", "", []),
+            ("README.md", "make test", []),
+            ("Makefile", "prettier:\n\tshfmt -w *.sh", ["format"]),
+            (
+                ".github/workflows/ci.yml",
+                "run: find . -name '*.sh' | xargs sh -n\nrun: make test",
+                ["behavioural", "static"],
+            ),
+            (".github/workflows/release.yml", "run: git push -n origin", []),
+            (".pre-commit-config.yaml", "entry: shellcheck", ["static"]),
         ],
     )
     def test_configured_by_file_contents_returns_classes_it_establishes(
         self, name: str, content: str, expected: list[str]
     ) -> None:
         assert CheckRegistry.configured_by(name, content) == expected
+
+    @pytest.mark.parametrize(
+        "path,expected",
+        [
+            ("Makefile", True),
+            ("tools/Makefile", True),
+            (".github/workflows/ci.yml", True),
+            (".gitlab-ci.yml", True),
+            (".github/dependabot.yml", False),
+            ("ruff.toml", False),
+        ],
+    )
+    def test_is_runner_file_path_reports_whether_it_runs_commands(
+        self, path: str, expected: bool
+    ) -> None:
+        assert CheckRegistry.is_runner(path) is expected
+
+    @pytest.mark.parametrize(
+        "text,command,expected",
+        [
+            ("sh -n passs.sh", "sh -n", True),
+            ("xargs -0 -n 1 sh -n", "sh -n", True),
+            ("git push -n origin", "sh -n", False),
+            ("bash -n foo.sh", "sh -n", False),
+            ("uv run pytest -q", "pytest", True),
+            ("uv run pytest-cov", "pytest", False),
+            ("cd foo && make test 2>&1", "make test", True),
+            ("make tests", "make test", False),
+        ],
+    )
+    def test_invokes_command_text_matches_whole_words_only(
+        self, text: str, command: str, expected: bool
+    ) -> None:
+        assert CheckRegistry.invokes(text, command) is expected
 
 
 class TestRiskSeverity:
