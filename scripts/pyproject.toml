@@ -29,7 +29,7 @@ vibecert-accept = "vibecert.vibecert:AcceptCli.run"
 vibecert-build = "vibecert.vibecert:BuildCli.run"
 vibecert-verify = "vibecert.vibecert:VerifyCli.run"
 [build-system]
-requires = ["uv_build>=0.11.25,<0.13.0"]
+requires = ["uv_build>=0.11.25,<0.14.0"]
 build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "vibecert"
