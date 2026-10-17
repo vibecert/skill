@@ -9,7 +9,16 @@ from vibecert.collector import EvidenceCollector
 from vibecert.publish import CertificateSite, SiteBuild
 from vibecert.render import CertificateMarkdown
 from vibecert.submission import Submission
-from vibecert.vibecert import AcceptCli, BuildCli, Cli, MetricsCli, PublishCli, ScoreCli
+from vibecert.verification import Verification
+from vibecert.vibecert import (
+    AcceptCli,
+    BuildCli,
+    Cli,
+    MetricsCli,
+    PublishCli,
+    ScoreCli,
+    VerifyCli,
+)
 
 
 class TestCli:
@@ -216,3 +225,47 @@ class TestBuildCli:
         )
         BuildCli.run()
         assert capsys.readouterr().out.strip() == "/out/abc1234/index.html"
+
+
+class TestVerifyCli:
+    @pytest.fixture
+    def arguments(self, mocker: pytest_mock.MockerFixture) -> None:
+        mocker.patch.object(
+            VerifyCli,
+            "_parser",
+            return_value=mocker.MagicMock(
+                parse_args=lambda: mocker.MagicMock(
+                    repo="/repo",
+                    branch="feat/foo",
+                    base="origin/main",
+                    site_url="https://foo.github.io",
+                    threshold=2.0,
+                )
+            ),
+        )
+
+    def test_run_passing_certificate_prints_the_identifier(
+        self,
+        arguments: None,
+        mocker: pytest_mock.MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        mocker.patch.object(Verification, "get_problems", return_value=[])
+        mocker.patch.object(Verification, "get_identifier", return_value="abc1234")
+        VerifyCli.run()
+        assert capsys.readouterr().out.strip() == "identifier: abc1234"
+
+    def test_run_problems_found_exits_with_them(
+        self, arguments: None, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(Verification, "get_problems", return_value=["foo", "bar"])
+        with pytest.raises(SystemExit, match="foo\nbar"):
+            VerifyCli.run()
+
+    def test_parser_branch_given_returns_defaults(self) -> None:
+        assert (
+            VerifyCli._parser()
+            .parse_args(["--branch", "feat/foo", "--site-url", "https://foo.github.io"])
+            .threshold
+            == 0.0
+        )

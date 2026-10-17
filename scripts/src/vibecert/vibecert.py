@@ -17,6 +17,7 @@ from vibecert.render import CertificateMarkdown
 from vibecert.site import SiteAddress
 from vibecert.submission import Submission
 from vibecert.transcript import TranscriptStore
+from vibecert.verification import Verification
 from vibecert.vibecert_types import Band
 
 
@@ -271,4 +272,36 @@ class BuildCli:
         )
         parser.add_argument("source")
         parser.add_argument("out")
+        return parser
+
+
+class VerifyCli:
+    """Command line entry point for checking a branch's certificate in CI."""
+
+    @staticmethod
+    def run() -> None:
+        """Print the passing identifier, or exit with every problem found."""
+        arguments: argparse.Namespace = VerifyCli._parser().parse_args()
+        verification: Verification = Verification(
+            GitRepository(pathlib.Path(arguments.repo)),
+            arguments.branch,
+            arguments.base,
+            arguments.site_url,
+            arguments.threshold,
+        )
+        problems: list[str] = verification.get_problems()
+        if problems:
+            sys.exit("\n".join(problems))
+        print(f"identifier: {verification.get_identifier()}")
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Check that a branch carries a current, passing certificate"
+        )
+        parser.add_argument("--repo", default=".")
+        parser.add_argument("--branch", required=True)
+        parser.add_argument("--base", default="main")
+        parser.add_argument("--site-url", required=True)
+        parser.add_argument("--threshold", type=float, default=0.0)
         return parser

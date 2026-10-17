@@ -16,7 +16,7 @@ The map below is there to make that choice without looking.
 
 ## Pipeline
 
-Five entry points run on the author's machine, each consuming the previous one's output, and two run on the site.
+Five entry points run on the author's machine, each consuming the previous one's output, two run on the site, and one runs in a consumer's CI.
 Run them with `uv run --project <this>/scripts`.
 
 | Command | In | Out |
@@ -28,10 +28,12 @@ Run them with `uv run --project <this>/scripts`.
 | `vibecert-publish` | the certificate, a directory | `<id>/score.json`, ready to submit |
 | `vibecert-accept` | a submitted checkout, its changed paths and submitter | the identifier, or every problem |
 | `vibecert-build` | the site checkout, a directory | every page, score and badge, and the root page |
+| `vibecert-verify` | a pull request's checkout, its branch and base | the identifier, or every reason its certificate does not pass |
 
 `vibecert-publish` writes a file and nothing else.
 Submitting it is the skill's job, as a pull request to the site, and `SKILL.md` holds that sequence.
 The site's workflows run `vibecert-accept` on each pull request and `vibecert-build` on every push to `main`.
+`vibecert-verify` passes only a certified score at or above the threshold whose `head` is the checked-out commit.
 
 ## Module map
 

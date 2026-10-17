@@ -33,6 +33,15 @@ class GitRepository:
         """
         return self._run("rev-parse", "--abbrev-ref", "HEAD")
 
+    def get_head(self) -> str:
+        """Return the commit checked out.
+
+        Returns:
+            str: The full sha of HEAD.
+
+        """
+        return self._run("rev-parse", "HEAD")
+
     def get_merge_base(self, base: str) -> str:
         """Return the commit the branch was taken from.
 

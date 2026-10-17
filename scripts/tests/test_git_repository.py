@@ -18,6 +18,14 @@ class TestGitRepository:
     ) -> None:
         assert repository.get_branch() == "feat/foo/add-bar"
 
+    def test_get_head_checked_out_returns_sha(
+        self, repository: GitRepository, git_mocks: GitMocks
+    ) -> None:
+        git_mocks._run.side_effect = lambda *arguments: (
+            "def456" if arguments == ("rev-parse", "HEAD") else ""
+        )
+        assert repository.get_head() == "def456"
+
     def test_get_merge_base_base_branch_returns_sha(
         self, repository: GitRepository
     ) -> None:
