@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import re
 
 from vibecert.bundle_types import Evidence
 from vibecert.certificate_types import CertificateDocument, MetricResult, WeightResult
@@ -19,6 +20,41 @@ ORDER: tuple[tuple[str, str], ...] = (
 )
 
 
+class CertificateIdentifier:
+    """The short identifier a certificate is published under."""
+
+    REMOTE: re.Pattern[str] = re.compile(
+        r"(?:\w+://)?(?:[^@/]+@)?github\.com[:/]"
+        r"(?P<owner>[\w.-]+)/(?P<name>[\w.-]+?)(?:\.git)?/?"
+    )
+
+    @classmethod
+    def of(cls, remote: str, branch: str, merge_base: str) -> str:
+        """Return the identifier for a repository, branch and merge base.
+
+        Args:
+            remote (str): The repository's remote, or its root if it has none. A
+                GitHub remote is reduced to its owner and name, so a clone over
+                SSH and one over HTTPS share identifiers.
+            branch (str): The branch name.
+            merge_base (str): The commit the branch diverged from.
+
+        Returns:
+            str: Seven characters, stable for the same three inputs.
+
+        """
+        return hashlib.sha256(
+            "\x1f".join([cls._remote(remote), branch, merge_base]).encode()
+        ).hexdigest()[:7]
+
+    @classmethod
+    def _remote(cls, remote: str) -> str:
+        parts: re.Match[str] | None = cls.REMOTE.fullmatch(remote)
+        return (
+            f"github.com/{parts['owner']}/{parts['name']}".lower() if parts else remote
+        )
+
+
 class Certificate:
     """The scored result for one branch.
 
@@ -36,7 +72,7 @@ class Certificate:
 
     """
 
-    SCHEMA: str = "vibecert/certificate@1"
+    SCHEMA: str = "vibecert/certificate@2"
 
     def __init__(
         self,
@@ -71,6 +107,10 @@ class Certificate:
             repository=None if self.__private else self.__evidence.repository.name,
             branch=None if self.__private else self.__evidence.branch.name,
             commits=len(self.__evidence.branch.commits),
+            head=self.__evidence.branch.commits[-1].sha
+            if self.__evidence.branch.commits
+            else self.__evidence.branch.merge_base,
+            uncommitted=self.__evidence.branch.includes_uncommitted,
             changed_lines=self.__evidence.diff.changed,
             generative_proportion=self.__evidence.attribution.touched_proportion,
             certified=self.__weights.is_certifiable(),
@@ -102,16 +142,11 @@ class Certificate:
             str: Seven characters, stable for a given repository, branch and head.
 
         """
-        return hashlib.sha256(
-            "\x1f".join(
-                [
-                    self.__evidence.repository.remote
-                    or self.__evidence.repository.root,
-                    self.__evidence.branch.name,
-                    self.__evidence.branch.merge_base,
-                ]
-            ).encode()
-        ).hexdigest()[:7]
+        return CertificateIdentifier.of(
+            self.__evidence.repository.remote or self.__evidence.repository.root,
+            self.__evidence.branch.name,
+            self.__evidence.branch.merge_base,
+        )
 
     def get_metrics(self) -> list[MetricResult]:
         """Return each metric in rubric order, raw and adjusted.

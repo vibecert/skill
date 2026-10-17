@@ -152,7 +152,7 @@ def certificate_document(
     findings: list[str] | None = None,
 ) -> CertificateDocument:
     return CertificateDocument(
-        schema_version="vibecert/certificate@1",
+        schema_version="vibecert/certificate@2",
         rubrics_version="vibecert/rubrics@1",
         issued_at="2026-01-01T00:00:00+00:00",
         identifier="abc1234",
@@ -161,6 +161,8 @@ def certificate_document(
         repository=None if private else "repo",
         branch=None if private else "feat/foo",
         commits=3,
+        head="bar1234",
+        uncommitted=False,
         changed_lines=400,
         generative_proportion=0.99,
         certified=score is not None,

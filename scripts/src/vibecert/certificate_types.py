@@ -28,6 +28,8 @@ class CertificateDocument(BaseModel):
     repository: str | None
     branch: str | None
     commits: int
+    head: str
+    uncommitted: bool
     changed_lines: int
     generative_proportion: float
     certified: bool

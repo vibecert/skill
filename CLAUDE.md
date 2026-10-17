@@ -16,7 +16,7 @@ The map below is there to make that choice without looking.
 
 ## Pipeline
 
-Five entry points, each consuming the previous one's output.
+Five entry points run on the author's machine, each consuming the previous one's output, and two run on the site.
 Run them with `uv run --project <this>/scripts`.
 
 | Command | In | Out |
@@ -24,11 +24,14 @@ Run them with `uv run --project <this>/scripts`.
 | `vibecert` | a repository and base | the evidence bundle, `vibecert/evidence@2` |
 | `vibecert-metrics` | the bundle | bands for the three countable metrics |
 | `vibecert-evidence` | the bundle, a metric name | just what that metric is scored from |
-| `vibecert-score` | the bundle, judged bands | the certificate, as markdown or `vibecert/certificate@1` |
-| `vibecert-publish` | the certificate, a directory | `index.html`, `score.json`, `badge.json` |
+| `vibecert-score` | the bundle, judged bands | the certificate, as markdown or `vibecert/certificate@2` |
+| `vibecert-publish` | the certificate, a directory | `<id>/score.json`, ready to submit |
+| `vibecert-accept` | a submitted checkout, its changed paths and submitter | the identifier, or every problem |
+| `vibecert-build` | the site checkout, a directory | every page, score and badge, and the root page |
 
-`vibecert-publish` writes files and nothing else.
-Pushing them is the skill's job, through the GitHub contents API, and `SKILL.md` holds that sequence.
+`vibecert-publish` writes a file and nothing else.
+Submitting it is the skill's job, as a pull request to the site, and `SKILL.md` holds that sequence.
+The site's workflows run `vibecert-accept` on each pull request and `vibecert-build` on every push to `main`.
 
 ## Module map
 
@@ -42,7 +45,11 @@ Scoring, which turns facts into bands and a number:
 
 Output:
 
-- `render.py` for the terminal and the pasteable snippets, `page.py` and `assets/certificate.css` for the published page, `publish.py` for the three files, `site.py` for addresses.
+- `render.py` for the terminal and the pasteable snippets, `page.py` and `assets/certificate.css` for the published page, `publish.py` for the submitted score and the site build, `site.py` for addresses.
+
+Site acceptance:
+
+- `submission.py` checks a pull request to the site. `ownership.py` finds who first published an identifier.
 
 Shared:
 
@@ -68,7 +75,7 @@ All weights, the gate and the arithmetic are deterministic.
 The house rules in `~/.claude/rules` apply, and the Python ones are strict: object orientation throughout, full type hints, no `Any`, no `@property`, getters rather than attribute access, Google docstrings on public methods only, and none on protected ones.
 `scripts/pyproject.toml` enforces `E,F,I,D,ANN` at 88 columns.
 
-Docstrings are a summary line plus `Args` and `Returns`.
+Docstrings are a summary line plus `Args`, `Returns` and `Raises`, where they apply.
 Explanatory paragraphs belong in the rubric, not beside the code.
 
 ## Decisions already settled
@@ -111,8 +118,16 @@ The site root deliberately does not list certificates: listing them would make p
 The tool generates files; the skill transports them.
 Everything else here is read-only by construction, and the certifier must not be able to modify what it scores.
 
-The skill publishes only a certificate whose `certified` is true.
+Only a certificate whose `certified` is true is published: `vibecert-publish` refuses one that is not, and so does the site.
 An uncertified one has a `null` score, and the author is told the gate's reason instead.
+
+The shared site vouches for a submission's form, its certification and who submitted it, never for its evidence.
+A score is self-assessed, and the site cannot recompute it without the author's transcripts.
+
+The owner of an identifier is the author of the merged pull request that first added it, read from the site's history rather than stored.
+This holds only while the site's `main` changes through accepted pull requests alone, so a maintenance change made any other way would claim every certificate it touches.
+
+Pages and badges are built by the site from submitted scores and never committed, so no author-written HTML is served from the shared origin.
 
 One certificate covers one repository.
 Work spanning several gets one certificate each, never merged by hand.
@@ -127,7 +142,7 @@ A private repository publishes its identifier and nothing else, so the page with
 It was built across three milestones, and each slice was scored by the tool as it went.
 Findings about this repository are expected rather than embarrassing, and two are standing: the subprocess calls in `git_repository.py` and `risk.py` are genuine, and the commit history says "non-generative" where the code says "deterministic".
 
-Its own certificate is published at `https://vibecert.github.io/bcf81d7`.
+Its last certificate, `https://vibecert.github.io/bcf81d7`, predates `vibecert/certificate@2` and the normalised identifier, so it must be rescored.
 
 ## Working here
 
@@ -136,8 +151,6 @@ Build the intended state in the scratch directory first, verify it there as a st
 A staged state that was never run is not worth staging.
 
 Commits follow Angular conventions with a `(vibecert)` scope, and a squash commit's body lists its sub-branch's commits in chronological order, not the parent branch's.
-
-Never create a branch; use the one the author is on, and ask if there is not one.
 
 ## Gotchas
 
@@ -171,7 +184,7 @@ In auto mode there are no `Edit` or `Write` tool calls at all; edits arrive as `
 
 Formatter runs dominate edit counts, 87 of 119 on one branch, which is why revisions exclude them.
 
-A certificate's identifier is a hash of remote, branch and merge base, so rescoring a branch replaces its certificate rather than adding one.
+A certificate's identifier is a hash of remote, branch and merge base, with a GitHub remote reduced to its owner and name, so rescoring a branch replaces its certificate rather than adding one.
 
 Shields caches a badge for 300 seconds and GitHub proxies it again, so a rescored badge lags even though the page updates at once.
 

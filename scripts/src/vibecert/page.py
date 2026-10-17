@@ -84,7 +84,7 @@ class CertificatePage:
         return (
             "private repository"
             if self.__document.private
-            else f"{self.__document.repository} {self.__document.branch}"
+            else html.escape(f"{self.__document.repository} {self.__document.branch}")
         )
 
     def _subject(self) -> str:
@@ -152,6 +152,7 @@ class CertificatePage:
         return (
             "<footer>"
             f"<p><code>{html.escape(self.__document.identifier)}</code> &middot; "
+            f"head <code>{html.escape(self.__document.head[:7])}</code> &middot; "
             f"issued {html.escape(self.__document.issued_at[:10])} &middot; "
             f"scored under {html.escape(self.__document.rubrics_version)}</p>"
             "<p>A VibeCert score is self-assessed. It records how generative tooling "

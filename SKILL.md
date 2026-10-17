@@ -60,35 +60,42 @@ not a score.
 
 # Publishing
 
-- **Important** publish only a certified result. Read `certified` from `<scratch>/cert.json`. Where it is `false` (its `score` is then `null`), stop and tell the author why, quoting the gate's reason from the rendered certificate, and publish nothing.
+- Write the submission with `<tool> vibecert-publish <scratch>/cert.json <scratch>/site`. It prints the repository to submit to, the identifier, and the directory it wrote `score.json` into. Substitute those three into the commands below, and assume none of them.
+- **Important** `vibecert-publish` refuses an uncertified result and gives the gate's reason. Where it does, tell the author that reason and publish nothing.
 - Certificates are served from `https://vibecert.github.io`, which is why every `vibecert-score` call above passes `--site-url https://vibecert.github.io`. Pass a different `--site-url` only when the author names somewhere else.
-- Write the files to publish with `<tool> vibecert-publish <scratch>/cert.json <scratch>/site`. It prints the repository to push to, the identifier, and the directory it wrote. Substitute those three into the commands below, and assume none of them.
-- Check the site exists before publishing, with `gh repo view <repository>`. A missing one reports 404, which is not a permissions problem.
-- Where it does not exist, stop and ask the author whether to create it. It will be a public repository, and every certificate in it is public. Do not create it without a clear yes, and do not publish their certificate anywhere else in the meantime.
-- On a yes, set it up once: create it with `gh repo create <repository> --public`, push the root page that `vibecert-publish ... --index` writes, then enable Pages with `gh api --method POST repos/<repository>/pages -f 'source[branch]=main' -f 'source[path]=/'`. A 409 means Pages was already on, which is fine.
-- A repository named `<owner>.github.io` turns Pages on by itself once it has content. A project repository such as `<owner>/vibecert` does not, so the enabling step matters there.
-- Add the files through the GitHub contents API, which only ever touches this certificate's own path. Do not clone the site, and never force push.
+- A site accepts certificates only through pull requests, which its own workflows check, merge and build into pages. Check the site exists with `gh repo view <repository>`. Where it reports 404, tell the author that the site is not set up and stop. Do not create it.
+- Submit `score.json` alone, from a branch on the author's fork, as a pull request. Do not clone the site or the fork, and never force push.
 
 ```
-for file in index.html score.json badge.json; do
-  path="<id>/$file"
-  base64 -w0 <directory>/$file > <scratch>/content.b64
-  sha=$(gh api "repos/<repository>/contents/$path" --jq .sha 2>/dev/null) || sha=""
-  verb=add; existing=()
-  [ -n "$sha" ] && { verb=rescore; existing=(-f "sha=$sha"); }
-  gh api --method PUT "repos/<repository>/contents/$path" \
-    -f "message=feat: $verb certificate <id>" \
-    -F "content=@<scratch>/content.b64" \
-    "${existing[@]}" >/dev/null
-done
+gh repo fork <repository> --clone=false
+login=$(gh api user --jq .login)
+fork="$login/$(basename <repository>)"
+gh repo sync "$fork"
+gh api --method DELETE "repos/$fork/git/refs/heads/vibecert/<id>" >/dev/null 2>&1 || true
+base=$(gh api "repos/$fork/git/ref/heads/main" --jq .object.sha)
+gh api --method POST "repos/$fork/git/refs" -f "ref=refs/heads/vibecert/<id>" -f "sha=$base" >/dev/null
+base64 -w0 <directory>/score.json > <scratch>/content.b64
+sha=$(gh api "repos/$fork/contents/<id>/score.json?ref=vibecert/<id>" --jq .sha 2>/dev/null) || sha=""
+verb=add; existing=()
+[ -n "$sha" ] && { verb=rescore; existing=(-f "sha=$sha"); }
+gh api --method PUT "repos/$fork/contents/<id>/score.json" \
+  -f "message=feat: $verb certificate <id>" \
+  -f "branch=vibecert/<id>" \
+  -F "content=@<scratch>/content.b64" \
+  "${existing[@]}" >/dev/null
+gh pr create --repo <repository> --head "$login:vibecert/<id>" --base main \
+  --title "feat: $verb certificate <id>" --body "Submitted with VibeCert."
 ```
 
-- If the push is refused for want of access, say so and stop. The author publishes their own certificates; do not offer to put them somewhere the author does not own.
+- `gh repo fork` returns before a new fork is ready, so where the next command reports 404, wait a few seconds and run it again.
+- `gh repo sync` only fast-forwards the fork's `main`. If it reports divergence, tell the author and stop; do not pass `--force`.
+- Deleting `vibecert/<id>` first closes any earlier submission of the same certificate, so a rescore always submits from the site's current `main`.
 - **Important** `gh` prints a 404 body to standard output, so a missing file leaves that JSON in `sha` unless the `|| sha=""` resets it. Without it the error text lands in the commit message.
 - **Important** write the encoded file to scratch and pass it with `-F content=@`, as above. Substituting `$(base64 ...)` inline on a continued line breaks in zsh: `base64`, and later commands in the same invocation, report "command not found" and nothing is written.
 - **Important** pass the existing blob through an array. Only bash word-splits `${sha:+-f sha="$sha"}` into two arguments; zsh passes one, and the update fails with a 422.
+- Wait for the site's check with `gh pr checks <pull request> --watch`. Where it fails, print the problems it reports and stop. A certificate whose identifier another user published first is refused, and only that user can replace it.
 - A certificate's identifier is fixed by the repository, branch and merge base, so rescoring the same branch replaces its certificate rather than adding another.
-- Verify the push with a single `curl -fsS https://raw.githubusercontent.com/<repository>/main/<id>/score.json`. Do not loop `gh api` reads to check it: auto mode refuses the loop even though it only reads.
+- Once the pull request merges, the site builds the page within a minute or two.
 - Finish by printing the certificate's address.
 - The rendered certificate ends with a section offering a commit trailer and a pull request snippet. Print them as given.
 - **Important** do not write either into a commit, a pull request or any file. Where the score goes is the author's decision, not yours.

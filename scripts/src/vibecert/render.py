@@ -14,6 +14,10 @@ class CertificateMarkdown:
         "not_scored": "missing",
     }
 
+    UNCERTIFIED: str = (
+        "Not certified: too little of this branch was generated to score."
+    )
+
     def __init__(self, document: CertificateDocument) -> None:
         self.__document: CertificateDocument = document
 
@@ -40,6 +44,7 @@ class CertificateMarkdown:
                 *self._findings(),
                 "",
                 f"`{self.__document.identifier}`, "
+                f"head `{self.__document.head[:7]}`, "
                 f"scored under {self.__document.rubrics_version}",
                 "",
                 *self._share(),
@@ -71,7 +76,7 @@ class CertificateMarkdown:
 
     def _headline(self) -> str:
         if self.__document.score is None:
-            return "Not certified: too little of this branch was generated to score."
+            return CertificateMarkdown.UNCERTIFIED
         return f"**{self.__document.score}/3**" + (
             ""
             if self.__document.scored == self.__document.applicable

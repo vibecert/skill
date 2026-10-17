@@ -6,7 +6,10 @@ import pytest_mock
 
 from tests.conftest import certificate_document, evidence_of
 from vibecert.collector import EvidenceCollector
-from vibecert.vibecert import Cli, MetricsCli, PublishCli, ScoreCli
+from vibecert.publish import CertificateSite, SiteBuild
+from vibecert.render import CertificateMarkdown
+from vibecert.submission import Submission
+from vibecert.vibecert import AcceptCli, BuildCli, Cli, MetricsCli, PublishCli, ScoreCli
 
 
 class TestCli:
@@ -101,10 +104,115 @@ class TestPublishCli:
             PublishCli,
             "_parser",
             return_value=mocker.MagicMock(
-                parse_args=lambda: mocker.MagicMock(
-                    certificate="/c.json", site="/site", index=False
-                )
+                parse_args=lambda: mocker.MagicMock(certificate="/c.json", site="/site")
             ),
         )
         with pytest.raises(ValueError):
             PublishCli.run()
+
+    def test_run_uncertified_certificate_refuses_with_the_reason(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            pathlib.Path,
+            "read_text",
+            return_value=certificate_document(None).model_dump_json(),
+        )
+        mocker.patch.object(
+            PublishCli,
+            "_parser",
+            return_value=mocker.MagicMock(
+                parse_args=lambda: mocker.MagicMock(certificate="/c.json", site="/site")
+            ),
+        )
+        with pytest.raises(ValueError, match=CertificateMarkdown.UNCERTIFIED):
+            PublishCli.run()
+
+    def test_run_certified_certificate_writes_it(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            pathlib.Path,
+            "read_text",
+            return_value=certificate_document().model_dump_json(),
+        )
+        mocker.patch.object(
+            PublishCli,
+            "_parser",
+            return_value=mocker.MagicMock(
+                parse_args=lambda: mocker.MagicMock(certificate="/c.json", site="/site")
+            ),
+        )
+        write: unittest.mock.MagicMock = mocker.patch.object(
+            CertificateSite, "write", return_value=pathlib.Path("/site/abc1234")
+        )
+        PublishCli.run()
+        write.assert_called_once_with()
+
+
+class TestAcceptCli:
+    @pytest.fixture
+    def arguments(self, mocker: pytest_mock.MockerFixture) -> None:
+        mocker.patch.object(
+            AcceptCli,
+            "_parser",
+            return_value=mocker.MagicMock(
+                parse_args=lambda: mocker.MagicMock(
+                    submission="/pull",
+                    submitter=1,
+                    changed=["abc1234/score.json"],
+                    site_url="https://foo.github.io",
+                )
+            ),
+        )
+
+    def test_run_clean_submission_prints_the_identifier(
+        self,
+        arguments: None,
+        mocker: pytest_mock.MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        mocker.patch.object(Submission, "get_problems", return_value=[])
+        AcceptCli.run()
+        assert capsys.readouterr().out.strip() == "identifier: abc1234"
+
+    def test_run_problems_found_exits_with_them(
+        self, arguments: None, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(Submission, "get_problems", return_value=["foo", "bar"])
+        with pytest.raises(SystemExit, match="foo\nbar"):
+            AcceptCli.run()
+
+    def test_parser_repeated_changed_returns_every_path(self) -> None:
+        assert AcceptCli._parser().parse_args(
+            [
+                "/pull",
+                "--submitter",
+                "1",
+                "--site-url",
+                "https://foo.github.io",
+                "--changed",
+                "abc1234/score.json",
+                "def5678/score.json",
+            ]
+        ).changed == ["abc1234/score.json", "def5678/score.json"]
+
+
+class TestBuildCli:
+    def test_run_built_site_prints_every_file(
+        self, mocker: pytest_mock.MockerFixture, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        mocker.patch.object(
+            BuildCli,
+            "_parser",
+            return_value=mocker.MagicMock(
+                parse_args=lambda: mocker.MagicMock(source="/source", out="/out")
+            ),
+        )
+        mocker.patch.object(
+            SiteBuild,
+            "build",
+            return_value=[pathlib.Path("/out/abc1234/index.html")],
+        )
+        BuildCli.run()
+        assert capsys.readouterr().out.strip() == "/out/abc1234/index.html"

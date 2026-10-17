@@ -1,8 +1,9 @@
 import pytest
+import pytest_mock
 
 from tests.conftest import evidence_of, file_of
-from vibecert.bundle_types import Evidence
-from vibecert.certificate import Certificate
+from vibecert.bundle_types import CommitInfo, Evidence
+from vibecert.certificate import Certificate, CertificateIdentifier
 from vibecert.rubric import Thresholds
 from vibecert.vibecert_types import Band
 
@@ -98,15 +99,28 @@ class TestCertificateDocument:
     def test_get_document_private_repository_keeps_the_identifier(self) -> None:
         assert len(Certificate(_bundle(), JUDGED, True).get_document().identifier) == 7
 
-    def test_get_identifier_same_branch_is_stable(self) -> None:
-        assert certificate().get_identifier() == certificate().get_identifier()
+    def test_get_document_branch_with_commits_records_newest_as_head(self) -> None:
+        bundle = _bundle()
+        bundle.branch.commits = [
+            CommitInfo(sha="foo1", timestamp="2026-01-01", subject="a"),
+            CommitInfo(sha="bar2", timestamp="2026-01-02", subject="b"),
+        ]
+        assert Certificate(bundle, JUDGED).get_document().head == "bar2"
 
-    def test_get_identifier_different_branch_differs(self) -> None:
-        other = _bundle()
-        other.branch.name = "feat/bar"
-        assert Certificate(other, JUDGED).get_identifier() != (
-            certificate().get_identifier()
-        )
+    def test_get_document_empty_branch_records_merge_base_as_head(self) -> None:
+        assert certificate().get_document().head == "abc123"
+
+    @pytest.mark.parametrize("uncommitted", [True, False])
+    def test_get_document_records_uncommitted_state(self, uncommitted: bool) -> None:
+        bundle = _bundle()
+        bundle.branch.includes_uncommitted = uncommitted
+        assert Certificate(bundle, JUDGED).get_document().uncommitted is uncommitted
+
+    def test_get_identifier_delegates_to_certificate_identifier(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(CertificateIdentifier, "of", return_value="foo1234")
+        assert certificate().get_identifier() == "foo1234"
 
     def test_get_metrics_scored_metric_reports_scored(self) -> None:
         assert [
@@ -141,3 +155,48 @@ class TestCertificateDocument:
         assert Certificate(bundle, JUDGED).get_document().findings == [
             "S603: subprocess call"
         ]
+
+
+class TestCertificateIdentifier:
+    def test_of_same_inputs_is_stable(self) -> None:
+        assert CertificateIdentifier.of("foo", "feat/bar", "abc123") == (
+            CertificateIdentifier.of("foo", "feat/bar", "abc123")
+        )
+
+    @pytest.mark.parametrize(
+        ("remote", "branch", "merge_base"),
+        [
+            ("baz", "feat/bar", "abc123"),
+            ("foo", "feat/baz", "abc123"),
+            ("foo", "feat/bar", "def456"),
+        ],
+    )
+    def test_of_different_input_differs(
+        self, remote: str, branch: str, merge_base: str
+    ) -> None:
+        assert CertificateIdentifier.of(remote, branch, merge_base) != (
+            CertificateIdentifier.of("foo", "feat/bar", "abc123")
+        )
+
+    @pytest.mark.parametrize(
+        "remote",
+        [
+            "git@github.com:Foo/bar.git",
+            "https://github.com/foo/bar",
+            "https://github.com/foo/bar.git",
+            "ssh://git@github.com/foo/bar.git",
+            "https://x-access-token@github.com/foo/bar/",
+        ],
+    )
+    def test_of_github_remote_forms_share_one_identifier(self, remote: str) -> None:
+        assert CertificateIdentifier.of(remote, "feat/baz", "abc123") == (
+            CertificateIdentifier.of("github.com/foo/bar", "feat/baz", "abc123")
+        )
+
+    def test_of_other_remote_is_used_as_given(self) -> None:
+        assert CertificateIdentifier.of("/repo", "feat/baz", "abc123") != (
+            CertificateIdentifier.of("/Repo", "feat/baz", "abc123")
+        )
+
+    def test_of_returns_seven_characters(self) -> None:
+        assert len(CertificateIdentifier.of("foo", "feat/bar", "abc123")) == 7

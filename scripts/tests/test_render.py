@@ -73,6 +73,9 @@ class TestCertificateMarkdown:
     def test_render_reports_the_identifier_and_rubric_version(self) -> None:
         assert "vibecert/rubrics@1" in rendered()
 
+    def test_render_reports_the_short_head(self) -> None:
+        assert "head `abc123`" in rendered()
+
 
 class TestCertificateSnippets:
     def test_get_trailer_certified_names_the_score_and_address(self) -> None:

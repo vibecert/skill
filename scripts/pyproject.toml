@@ -25,6 +25,8 @@ vibecert-metrics = "vibecert.vibecert:MetricsCli.run"
 vibecert-evidence = "vibecert.vibecert:EvidenceCli.run"
 vibecert-score = "vibecert.vibecert:ScoreCli.run"
 vibecert-publish = "vibecert.vibecert:PublishCli.run"
+vibecert-accept = "vibecert.vibecert:AcceptCli.run"
+vibecert-build = "vibecert.vibecert:BuildCli.run"
 [build-system]
 requires = ["uv_build>=0.11.25,<0.13.0"]
 build-backend = "uv_build"

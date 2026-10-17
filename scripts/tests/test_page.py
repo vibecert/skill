@@ -1,4 +1,7 @@
+import pytest
+
 from tests.conftest import certificate_document
+from vibecert.certificate_types import CertificateDocument, MetricResult
 from vibecert.page import CertificatePage, SiteIndex, Stylesheet
 
 
@@ -34,6 +37,61 @@ class TestCertificatePage:
             in CertificatePage(
                 certificate_document(evidence="<script>alert(1)</script>")
             ).render()
+        )
+
+    @pytest.mark.parametrize(
+        "document",
+        [
+            *(
+                certificate_document().model_copy(update={field: "<b>"})
+                for field in [
+                    "repository",
+                    "branch",
+                    "identifier",
+                    "head",
+                    "issued_at",
+                    "rubrics_version",
+                ]
+            ),
+            certificate_document(evidence="<b>"),
+            certificate_document(findings=["<b>"]),
+            certificate_document().model_copy(
+                update={
+                    "metrics": [
+                        MetricResult(
+                            number=1,
+                            name="foo",
+                            title="<b>",
+                            state="scored",
+                            raw=3,
+                            adjusted=3,
+                            evidence="bar",
+                        )
+                    ]
+                }
+            ),
+        ],
+        ids=[
+            "repository",
+            "branch",
+            "identifier",
+            "head",
+            "issued_at",
+            "rubrics_version",
+            "evidence",
+            "findings",
+            "metric_title",
+        ],
+    )
+    def test_render_author_field_markup_is_escaped(
+        self, document: CertificateDocument
+    ) -> None:
+        assert "<b>" not in CertificatePage(document).render()
+
+    def test_render_shows_the_short_head(self) -> None:
+        assert (
+            "head <code>bar1234</code>"
+            in CertificatePage(certificate_document()).render()
         )
 
     def test_render_findings_present_lists_them(self) -> None:

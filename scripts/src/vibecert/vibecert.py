@@ -2,6 +2,7 @@ import argparse
 import dataclasses
 import json
 import pathlib
+import sys
 
 from vibecert.bundle_types import Evidence
 from vibecert.certificate import Certificate
@@ -11,9 +12,10 @@ from vibecert.evidence import EvidenceProjection
 from vibecert.git_repository import GitRepository
 from vibecert.json_values import Json
 from vibecert.metrics import DeterministicMetrics
-from vibecert.publish import CertificateSite
+from vibecert.publish import CertificateSite, SiteBuild
 from vibecert.render import CertificateMarkdown
 from vibecert.site import SiteAddress
+from vibecert.submission import Submission
 from vibecert.transcript import TranscriptStore
 from vibecert.vibecert_types import Band
 
@@ -189,7 +191,7 @@ class PublishCli:
 
     @staticmethod
     def run() -> None:
-        """Write one certificate's page, score and badge into a site directory."""
+        """Write one certificate's score into a site directory, ready to submit."""
         arguments: argparse.Namespace = PublishCli._parser().parse_args()
         document: CertificateDocument = CertificateDocument.model_validate_json(
             pathlib.Path(arguments.certificate).read_text()
@@ -198,12 +200,14 @@ class PublishCli:
             raise ValueError(
                 "this certificate has no address, so rescore with --site-url"
             )
-        site: CertificateSite = CertificateSite(document, pathlib.Path(arguments.site))
-        if arguments.index:
-            site.write_index()
+        if not document.certified:
+            raise ValueError(CertificateMarkdown.UNCERTIFIED)
         print(f"repository: {SiteAddress.repository(document.site)}")
         print(f"identifier: {document.identifier}")
-        print(f"directory: {site.write()}")
+        print(
+            "directory: "
+            + str(CertificateSite(document, pathlib.Path(arguments.site)).write())
+        )
 
     @staticmethod
     def _parser() -> argparse.ArgumentParser:
@@ -212,5 +216,59 @@ class PublishCli:
         )
         parser.add_argument("certificate")
         parser.add_argument("site")
-        parser.add_argument("--index", action="store_true")
+        return parser
+
+
+class AcceptCli:
+    """Command line entry point for checking a submission to the shared site."""
+
+    @staticmethod
+    def run() -> None:
+        """Print the accepted identifier, or exit with every problem found."""
+        arguments: argparse.Namespace = AcceptCli._parser().parse_args()
+        problems: list[str] = Submission(
+            arguments.changed,
+            pathlib.Path(arguments.submission),
+            arguments.submitter,
+            arguments.site_url,
+        ).get_problems()
+        if problems:
+            sys.exit("\n".join(problems))
+        print(f"identifier: {pathlib.PurePosixPath(arguments.changed[0]).parent}")
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Check a VibeCert submission to the shared site"
+        )
+        parser.add_argument("submission")
+        parser.add_argument("--submitter", type=int, required=True)
+        parser.add_argument("--changed", nargs="*", default=[])
+        parser.add_argument("--site-url", required=True)
+        return parser
+
+
+class BuildCli:
+    """Command line entry point for building the whole site."""
+
+    @staticmethod
+    def run() -> None:
+        """Build every submitted certificate into a directory ready to serve."""
+        arguments: argparse.Namespace = BuildCli._parser().parse_args()
+        print(
+            "\n".join(
+                str(path)
+                for path in SiteBuild(
+                    pathlib.Path(arguments.source), pathlib.Path(arguments.out)
+                ).build()
+            )
+        )
+
+    @staticmethod
+    def _parser() -> argparse.ArgumentParser:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser(
+            description="Build the VibeCert site from its submitted scores"
+        )
+        parser.add_argument("source")
+        parser.add_argument("out")
         return parser
