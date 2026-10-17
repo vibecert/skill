@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import pathlib
 import unittest.mock
 
@@ -6,6 +7,7 @@ import pytest
 import pytest_mock
 
 from tests.conftest import certificate_document
+from vibecert.account import Account
 from vibecert.certificate_types import CertificateDocument
 from vibecert.ownership import Ownership
 from vibecert.submission import Submission
@@ -22,6 +24,7 @@ class SubmissionFixture(Submission):
 @dataclasses.dataclass
 class SubmissionMocks:
     _read: unittest.mock.MagicMock
+    get_age: unittest.mock.MagicMock
     permits: unittest.mock.MagicMock
 
 
@@ -33,6 +36,7 @@ def submission_mocks(mocker: pytest_mock.MockerFixture) -> SubmissionMocks:
             "_read",
             return_value=certificate_document().model_dump_json(),
         ),
+        mocker.patch.object(Account, "get_age", return_value=Submission.AGE),
         mocker.patch.object(Ownership, "permits", return_value=True),
     )
 
@@ -116,6 +120,14 @@ class TestSubmission:
         submission_mocks.permits.return_value = False
         assert Submission([PATH], pathlib.Path("/site"), 1, SITE).get_problems() == [
             "certificate abc1234 belongs to another user"
+        ]
+
+    def test_get_problems_young_account_returns_age_problem(
+        self, submission_mocks: SubmissionMocks
+    ) -> None:
+        submission_mocks.get_age.return_value = datetime.timedelta(days=29)
+        assert Submission([PATH], pathlib.Path("/site"), 1, SITE).get_problems() == [
+            "accounts under 30 days old cannot submit"
         ]
 
     def test_get_problems_redacted_private_certificate_returns_none(

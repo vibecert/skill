@@ -51,7 +51,7 @@ Output:
 
 Site acceptance:
 
-- `submission.py` checks a pull request to the site. `ownership.py` finds who first published an identifier.
+- `submission.py` checks a pull request to the site. `ownership.py` finds who first published an identifier. `account.py` reads how old a submitter's account is.
 
 Shared:
 
@@ -125,6 +125,7 @@ An uncertified one has a `null` score, and the author is told the gate's reason 
 
 The shared site vouches for a submission's form, its certification and who submitted it, never for its evidence.
 A score is self-assessed, and the site cannot recompute it without the author's transcripts.
+It refuses accounts under 30 days old, which slows throwaway accounts but not a determined one.
 
 The owner of an identifier is the author of the merged pull request that first added it, read from the site's history rather than stored.
 This holds only while the site's `main` changes through accepted pull requests alone, so a maintenance change made any other way would claim every certificate it touches.

@@ -1,8 +1,10 @@
+import datetime
 import pathlib
 import re
 
 from pydantic import ValidationError
 
+from vibecert.account import Account
 from vibecert.certificate import Certificate
 from vibecert.certificate_types import CertificateDocument
 from vibecert.ownership import Ownership
@@ -21,6 +23,7 @@ class Submission:
     """
 
     PATH: re.Pattern[str] = re.compile(r"(?P<identifier>[0-9a-f]{7})/score\.json")
+    AGE: datetime.timedelta = datetime.timedelta(days=30)
 
     def __init__(
         self, changed: list[str], root: pathlib.Path, submitter: int, site: str
@@ -51,6 +54,7 @@ class Submission:
         return [
             problem
             for problem in (
+                self._age(),
                 self._schema(document),
                 self._identifier(document),
                 self._address(document),
@@ -68,6 +72,11 @@ class Submission:
 
     def _read(self, path: pathlib.Path) -> str | None:
         return path.read_text() if path.is_file() and not path.is_symlink() else None
+
+    def _age(self) -> str | None:
+        if Account(self.__submitter).get_age() >= Submission.AGE:
+            return None
+        return f"accounts under {Submission.AGE.days} days old cannot submit"
 
     def _schema(self, document: CertificateDocument) -> str | None:
         if document.schema_version == Certificate.SCHEMA:
