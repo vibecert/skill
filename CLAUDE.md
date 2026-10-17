@@ -130,6 +130,8 @@ The owner of an identifier is the author of the merged pull request that first a
 This holds only while the site's `main` changes through accepted pull requests alone, so a maintenance change made any other way would claim every certificate it touches.
 
 Pages and badges are built by the site from submitted scores and never committed, so no author-written HTML is served from the shared origin.
+The exception is the `vibecert/certificate@1` certificates pushed before submissions existed, all by the maintainer, which `SiteBuild.LEGACY` serves as committed so their links keep working.
+A submission cannot add or change one, because `Submission` accepts only the current schema.
 
 One certificate covers one repository.
 Work spanning several gets one certificate each, never merged by hand.

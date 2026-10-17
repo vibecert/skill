@@ -3,6 +3,7 @@ import pathlib
 import shutil
 
 from vibecert.certificate_types import CertificateDocument
+from vibecert.json_values import Json
 from vibecert.page import CertificatePage, SiteIndex
 
 
@@ -84,11 +85,16 @@ class CertificateSite:
 class SiteBuild:
     """Builds the whole site from the scores submitted to it.
 
+    A certificate from before the current schema was pushed with its page and
+    badge, and is served as it was committed.
+
     Args:
         source (pathlib.Path): A checkout holding one score.json per certificate.
         out (pathlib.Path): The directory to build the site into.
 
     """
+
+    LEGACY: tuple[str, ...] = ("vibecert/certificate@1",)
 
     def __init__(self, source: pathlib.Path, out: pathlib.Path) -> None:
         self.__source: pathlib.Path = source
@@ -114,6 +120,13 @@ class SiteBuild:
         ]
 
     def _certificate(self, score: pathlib.Path) -> list[pathlib.Path]:
+        if (
+            Json.as_text(
+                Json.as_dict(json.loads(score.read_text())).get("schema_version")
+            )
+            in SiteBuild.LEGACY
+        ):
+            return self._legacy(score.parent)
         document: CertificateDocument = CertificateDocument.model_validate_json(
             score.read_text()
         )
@@ -122,6 +135,12 @@ class SiteBuild:
         directory: pathlib.Path = CertificateSite(document, self.__out).write_page()
         shutil.copyfile(score, directory / "score.json")
         return [directory / name for name in ("index.html", "score.json", "badge.json")]
+
+    def _legacy(self, directory: pathlib.Path) -> list[pathlib.Path]:
+        shutil.copytree(directory, self.__out / directory.name, dirs_exist_ok=True)
+        return sorted(
+            self.__out / directory.name / path.name for path in directory.iterdir()
+        )
 
     def _root(self) -> pathlib.Path:
         self.__out.mkdir(parents=True, exist_ok=True)

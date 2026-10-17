@@ -1,9 +1,11 @@
+import json
 import urllib.error
 import urllib.request
 
-from vibecert.certificate import CertificateIdentifier
+from vibecert.certificate import Certificate, CertificateIdentifier
 from vibecert.certificate_types import CertificateDocument
 from vibecert.git_repository import GitRepository
+from vibecert.json_values import Json
 
 
 class Verification:
@@ -56,6 +58,9 @@ class Verification:
         text: str | None = self._fetch(address)
         if text is None:
             return [f"no certificate at {address}"]
+        schema: str = Json.as_text(Json.as_dict(json.loads(text)).get("schema_version"))
+        if schema != Certificate.SCHEMA:
+            return [f"the certificate uses {schema}, too old to verify; rescore it"]
         document: CertificateDocument = CertificateDocument.model_validate_json(text)
         return [
             problem

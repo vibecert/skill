@@ -113,6 +113,22 @@ class TestSiteBuild:
         with pytest.raises(ValueError, match="holds certificate abc1234"):
             SiteBuild(tmp_path / "source", tmp_path / "out").build()
 
+    def test_build_legacy_certificate_is_served_as_committed(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        (tmp_path / "source" / "abc1234").mkdir(parents=True)
+        (tmp_path / "source" / "abc1234" / "score.json").write_text(
+            '{"schema_version": "vibecert/certificate@1"}'
+        )
+        (tmp_path / "source" / "abc1234" / "index.html").write_text("<p>foo</p>")
+        assert SiteBuild(tmp_path / "source", tmp_path / "out").build()[:2] == [
+            tmp_path / "out" / "abc1234" / "index.html",
+            tmp_path / "out" / "abc1234" / "score.json",
+        ]
+        assert (tmp_path / "out" / "abc1234" / "index.html").read_text() == (
+            "<p>foo</p>"
+        )
+
     def test_build_no_certificates_writes_the_root_only(
         self, tmp_path: pathlib.Path
     ) -> None:

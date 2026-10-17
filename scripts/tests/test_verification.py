@@ -77,6 +77,16 @@ class TestVerification:
             "no certificate at https://foo.github.io/abc1234/score.json"
         ]
 
+    def test_get_problems_legacy_certificate_returns_too_old(
+        self, verification: Verification, verification_mocks: VerificationMocks
+    ) -> None:
+        verification_mocks._fetch.return_value = (
+            '{"schema_version": "vibecert/certificate@1"}'
+        )
+        assert verification.get_problems() == [
+            "the certificate uses vibecert/certificate@1, too old to verify; rescore it"
+        ]
+
     def test_get_problems_stale_head_returns_head_problem(
         self, verification: Verification, verification_mocks: VerificationMocks
     ) -> None:
