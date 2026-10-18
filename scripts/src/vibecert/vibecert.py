@@ -291,13 +291,13 @@ class VerifyCli:
         )
         if arguments.comment:
             document: CertificateDocument | None = verification.get_document()
-            print(
-                VerificationComment(
-                    document,
-                    [] if document is None else verification.assess(document),
-                    verification.is_generated(),
-                ).render()
-            )
+            comment: str = VerificationComment(
+                document,
+                [] if document is None else verification.assess(document),
+                verification.is_generated(),
+            ).render()
+            if comment:
+                print(comment)
             return
         problems: list[str] = verification.get_problems()
         if problems:
