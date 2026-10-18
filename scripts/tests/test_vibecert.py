@@ -287,6 +287,19 @@ class TestVerifyCli:
         init.assert_called_once_with(document, problems, True)
         assert capsys.readouterr().out.strip() == "bar"
 
+    def test_run_empty_comment_prints_nothing(
+        self,
+        arguments: unittest.mock.MagicMock,
+        mocker: pytest_mock.MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        arguments.comment = True
+        mocker.patch.object(Verification, "get_document", return_value=None)
+        mocker.patch.object(Verification, "is_generated", return_value=False)
+        mocker.patch.object(VerificationComment, "render", return_value="")
+        VerifyCli.run()
+        assert capsys.readouterr().out == ""
+
     def test_parser_branch_given_returns_defaults(self) -> None:
         assert (
             VerifyCli._parser()
