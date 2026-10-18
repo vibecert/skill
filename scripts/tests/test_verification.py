@@ -17,6 +17,7 @@ class VerificationMocks:
     get_remote: unittest.mock.MagicMock
     get_merge_base: unittest.mock.MagicMock
     get_head: unittest.mock.MagicMock
+    get_messages: unittest.mock.MagicMock
     _fetch: unittest.mock.MagicMock
 
 
@@ -29,6 +30,7 @@ def verification_mocks(mocker: pytest_mock.MockerFixture) -> VerificationMocks:
         ),
         mocker.patch.object(GitRepository, "get_merge_base", return_value="abc123"),
         mocker.patch.object(GitRepository, "get_head", return_value="bar1234"),
+        mocker.patch.object(GitRepository, "get_messages", return_value=["feat: foo"]),
         mocker.patch.object(
             Verification,
             "_fetch",
@@ -87,26 +89,59 @@ class TestVerification:
             "the certificate uses vibecert/certificate@1, too old to verify; rescore it"
         ]
 
-    def test_get_problems_stale_head_returns_head_problem(
+    def test_get_document_current_certificate_returns_it(
+        self, verification: Verification, verification_mocks: VerificationMocks
+    ) -> None:
+        assert verification.get_document() == certificate_document()
+
+    @pytest.mark.parametrize(
+        "text", [None, '{"schema_version": "vibecert/certificate@1"}']
+    )
+    def test_get_document_missing_or_legacy_returns_none(
+        self,
+        verification: Verification,
+        verification_mocks: VerificationMocks,
+        text: str | None,
+    ) -> None:
+        verification_mocks._fetch.return_value = text
+        assert verification.get_document() is None
+
+    def test_assess_stale_head_returns_head_problem(
         self, verification: Verification, verification_mocks: VerificationMocks
     ) -> None:
         verification_mocks.get_head.return_value = "def5678"
-        assert verification.get_problems() == [
+        assert verification.assess(certificate_document()) == [
             "the certificate covers bar1234, not HEAD"
         ]
 
-    def test_get_problems_below_threshold_returns_score_problem(
+    def test_assess_below_threshold_returns_score_problem(
         self, verification: Verification, verification_mocks: VerificationMocks
     ) -> None:
-        verification_mocks._fetch.return_value = certificate_document(
-            1.5
-        ).model_dump_json()
-        assert verification.get_problems() == ["score 1.5 is below 2.0"]
+        assert verification.assess(certificate_document(1.5)) == [
+            "score 1.5 is below 2.0"
+        ]
 
-    def test_get_problems_uncertified_returns_certification_problem(
+    def test_assess_uncertified_returns_certification_problem(
         self, verification: Verification, verification_mocks: VerificationMocks
     ) -> None:
-        verification_mocks._fetch.return_value = certificate_document(
-            None
-        ).model_dump_json()
-        assert verification.get_problems() == ["the certificate is not certified"]
+        assert verification.assess(certificate_document(None)) == [
+            "the certificate is not certified"
+        ]
+
+    @pytest.mark.parametrize(
+        "messages,expected",
+        [
+            (["feat: foo\n\nCo-Authored-By: Claude <noreply@anthropic.com>"], True),
+            (["feat: foo", "fix: bar"], False),
+        ],
+    )
+    def test_is_generated_commit_messages_returns_whether_tool_credited(
+        self,
+        verification: Verification,
+        verification_mocks: VerificationMocks,
+        messages: list[str],
+        expected: bool,
+    ) -> None:
+        verification_mocks.get_messages.return_value = messages
+        assert verification.is_generated() is expected
+        verification_mocks.get_messages.assert_called_once_with("abc123")

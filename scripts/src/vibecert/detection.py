@@ -305,3 +305,13 @@ class RiskSeverity:
             for finding in findings
             for severe in cls.SEVERE
         )
+
+
+class GenerativeCommits:
+    """Commit message lines that credit a generative tool."""
+
+    PATTERN: re.Pattern[str] = re.compile(
+        r"^(co-authored-by:|.*\bgenerated (with|by)\b).*"
+        r"\b(claude|anthropic\.com|copilot|cursor|aider|codex|gemini|devin)\b",
+        re.IGNORECASE | re.MULTILINE,
+    )

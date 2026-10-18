@@ -13,7 +13,7 @@ from vibecert.git_repository import GitRepository
 from vibecert.json_values import Json
 from vibecert.metrics import DeterministicMetrics
 from vibecert.publish import CertificateSite, SiteBuild
-from vibecert.render import CertificateMarkdown
+from vibecert.render import CertificateMarkdown, VerificationComment
 from vibecert.site import SiteAddress
 from vibecert.submission import Submission
 from vibecert.transcript import TranscriptStore
@@ -280,7 +280,7 @@ class VerifyCli:
 
     @staticmethod
     def run() -> None:
-        """Print the passing identifier, or exit with every problem found."""
+        """Print the passing identifier or a comment, or exit with every problem."""
         arguments: argparse.Namespace = VerifyCli._parser().parse_args()
         verification: Verification = Verification(
             GitRepository(pathlib.Path(arguments.repo)),
@@ -289,6 +289,16 @@ class VerifyCli:
             arguments.site_url,
             arguments.threshold,
         )
+        if arguments.comment:
+            document: CertificateDocument | None = verification.get_document()
+            print(
+                VerificationComment(
+                    document,
+                    [] if document is None else verification.assess(document),
+                    verification.is_generated(),
+                ).render()
+            )
+            return
         problems: list[str] = verification.get_problems()
         if problems:
             sys.exit("\n".join(problems))
@@ -304,4 +314,5 @@ class VerifyCli:
         parser.add_argument("--base", default="main")
         parser.add_argument("--site-url", required=True)
         parser.add_argument("--threshold", type=float, default=0.0)
+        parser.add_argument("--comment", action="store_true")
         return parser

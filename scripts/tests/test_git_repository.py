@@ -97,6 +97,17 @@ class TestGitRepository:
 
 
 class TestGitRepositoryFiles:
+    def test_get_messages_branch_commits_returns_each_message(
+        self, repository: GitRepository, git_mocks: GitMocks
+    ) -> None:
+        git_mocks._run.side_effect = lambda *arguments: (
+            "feat: foo\n\nCo-authored-by: bar\n\x00\nfix: baz\n\x00"
+        )
+        assert repository.get_messages("abc123") == [
+            "feat: foo\n\nCo-authored-by: bar",
+            "fix: baz",
+        ]
+
     def test_get_tracked_files_repository_files_returns_paths(
         self, repository: GitRepository, git_mocks: GitMocks
     ) -> None:

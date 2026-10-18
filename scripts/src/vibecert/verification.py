@@ -4,6 +4,7 @@ import urllib.request
 
 from vibecert.certificate import Certificate, CertificateIdentifier
 from vibecert.certificate_types import CertificateDocument
+from vibecert.detection import GenerativeCommits
 from vibecert.git_repository import GitRepository
 from vibecert.json_values import Json
 
@@ -61,7 +62,37 @@ class Verification:
         schema: str = Json.as_text(Json.as_dict(json.loads(text)).get("schema_version"))
         if schema != Certificate.SCHEMA:
             return [f"the certificate uses {schema}, too old to verify; rescore it"]
-        document: CertificateDocument = CertificateDocument.model_validate_json(text)
+        return self.assess(CertificateDocument.model_validate_json(text))
+
+    def get_document(self) -> CertificateDocument | None:
+        """Return the branch's certificate, where one in the current schema exists.
+
+        Returns:
+            CertificateDocument | None: The certificate, or None when it is missing
+                or too old to verify.
+
+        """
+        text: str | None = self._fetch(
+            f"{self.__site}/{self.get_identifier()}/score.json"
+        )
+        return (
+            CertificateDocument.model_validate_json(text)
+            if text is not None
+            and Json.as_text(Json.as_dict(json.loads(text)).get("schema_version"))
+            == Certificate.SCHEMA
+            else None
+        )
+
+    def assess(self, document: CertificateDocument) -> list[str]:
+        """Return every reason a current certificate does not pass.
+
+        Args:
+            document (CertificateDocument): The branch's certificate.
+
+        Returns:
+            list[str]: One line per problem, or none where it passes.
+
+        """
         return [
             problem
             for problem in (
@@ -75,6 +106,20 @@ class Verification:
             )
             if problem is not None
         ]
+
+    def is_generated(self) -> bool:
+        """Report whether any commit on the branch credits a generative tool.
+
+        Returns:
+            bool: True when a commit message names a generative co-author or tool.
+
+        """
+        return any(
+            GenerativeCommits.PATTERN.search(message)
+            for message in self.__repository.get_messages(
+                self.__repository.get_merge_base(self.__base)
+            )
+        )
 
     def _fetch(self, address: str) -> str | None:
         try:

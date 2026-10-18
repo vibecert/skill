@@ -74,6 +74,24 @@ class GitRepository:
             if line
         ]
 
+    def get_messages(self, merge_base: str) -> list[str]:
+        """Return the full message of every commit unique to the branch.
+
+        Args:
+            merge_base (str): The sha the branch was taken from.
+
+        Returns:
+            list[str]: One message per commit, newest first.
+
+        """
+        return [
+            message.strip()
+            for message in self._run(
+                "log", "--format=%B%x00", merge_base + "..HEAD"
+            ).split("\x00")
+            if message.strip()
+        ]
+
     def get_diff(self, merge_base: str, untracked: bool) -> dict[str, FileDiff]:
         """Return added and removed lines per file, including uncommitted work.
 

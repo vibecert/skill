@@ -5,9 +5,10 @@ import pytest
 import pytest_mock
 
 from tests.conftest import certificate_document, evidence_of
+from vibecert.certificate_types import CertificateDocument
 from vibecert.collector import EvidenceCollector
 from vibecert.publish import CertificateSite, SiteBuild
-from vibecert.render import CertificateMarkdown
+from vibecert.render import CertificateMarkdown, VerificationComment
 from vibecert.submission import Submission
 from vibecert.verification import Verification
 from vibecert.vibecert import (
@@ -177,7 +178,7 @@ class TestAcceptCli:
 
     def test_run_clean_submission_prints_the_identifier(
         self,
-        arguments: None,
+        arguments: unittest.mock.MagicMock,
         mocker: pytest_mock.MockerFixture,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
@@ -186,7 +187,7 @@ class TestAcceptCli:
         assert capsys.readouterr().out.strip() == "identifier: abc1234"
 
     def test_run_problems_found_exits_with_them(
-        self, arguments: None, mocker: pytest_mock.MockerFixture
+        self, arguments: unittest.mock.MagicMock, mocker: pytest_mock.MockerFixture
     ) -> None:
         mocker.patch.object(Submission, "get_problems", return_value=["foo", "bar"])
         with pytest.raises(SystemExit, match="foo\nbar"):
@@ -229,24 +230,25 @@ class TestBuildCli:
 
 class TestVerifyCli:
     @pytest.fixture
-    def arguments(self, mocker: pytest_mock.MockerFixture) -> None:
+    def arguments(self, mocker: pytest_mock.MockerFixture) -> unittest.mock.MagicMock:
+        namespace: unittest.mock.MagicMock = mocker.MagicMock(
+            repo="/repo",
+            branch="feat/foo",
+            base="origin/main",
+            site_url="https://foo.github.io",
+            threshold=2.0,
+            comment=False,
+        )
         mocker.patch.object(
             VerifyCli,
             "_parser",
-            return_value=mocker.MagicMock(
-                parse_args=lambda: mocker.MagicMock(
-                    repo="/repo",
-                    branch="feat/foo",
-                    base="origin/main",
-                    site_url="https://foo.github.io",
-                    threshold=2.0,
-                )
-            ),
+            return_value=mocker.MagicMock(parse_args=lambda: namespace),
         )
+        return namespace
 
     def test_run_passing_certificate_prints_the_identifier(
         self,
-        arguments: None,
+        arguments: unittest.mock.MagicMock,
         mocker: pytest_mock.MockerFixture,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
@@ -256,11 +258,34 @@ class TestVerifyCli:
         assert capsys.readouterr().out.strip() == "identifier: abc1234"
 
     def test_run_problems_found_exits_with_them(
-        self, arguments: None, mocker: pytest_mock.MockerFixture
+        self, arguments: unittest.mock.MagicMock, mocker: pytest_mock.MockerFixture
     ) -> None:
         mocker.patch.object(Verification, "get_problems", return_value=["foo", "bar"])
         with pytest.raises(SystemExit, match="foo\nbar"):
             VerifyCli.run()
+
+    @pytest.mark.parametrize(
+        "document,problems", [(certificate_document(), ["foo"]), (None, [])]
+    )
+    def test_run_comment_requested_prints_the_comment(
+        self,
+        arguments: unittest.mock.MagicMock,
+        mocker: pytest_mock.MockerFixture,
+        capsys: pytest.CaptureFixture[str],
+        document: CertificateDocument | None,
+        problems: list[str],
+    ) -> None:
+        arguments.comment = True
+        mocker.patch.object(Verification, "get_document", return_value=document)
+        mocker.patch.object(Verification, "assess", return_value=["foo"])
+        mocker.patch.object(Verification, "is_generated", return_value=True)
+        init: unittest.mock.MagicMock = mocker.patch.object(
+            VerificationComment, "__init__", return_value=None
+        )
+        mocker.patch.object(VerificationComment, "render", return_value="bar")
+        VerifyCli.run()
+        init.assert_called_once_with(document, problems, True)
+        assert capsys.readouterr().out.strip() == "bar"
 
     def test_parser_branch_given_returns_defaults(self) -> None:
         assert (

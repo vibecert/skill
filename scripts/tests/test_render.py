@@ -1,7 +1,14 @@
+import pytest
+import pytest_mock
+
 from tests.conftest import certificate_document, evidence_of, file_of
 from vibecert.bundle_types import CheckInfo
 from vibecert.certificate import Certificate
-from vibecert.render import CertificateMarkdown, CertificateSnippets
+from vibecert.render import (
+    CertificateMarkdown,
+    CertificateSnippets,
+    VerificationComment,
+)
 from vibecert.vibecert_types import Band
 
 
@@ -117,3 +124,30 @@ class TestSharingSection:
             "no address"
             in CertificateMarkdown(Certificate(bundle, []).get_document()).render()
         )
+
+
+class TestVerificationComment:
+    @pytest.fixture
+    def get_summary(self, mocker: pytest_mock.MockerFixture) -> None:
+        mocker.patch.object(CertificateSnippets, "get_summary", return_value="foo")
+
+    def test_render_passing_certificate_returns_summary(
+        self, get_summary: None
+    ) -> None:
+        assert VerificationComment(certificate_document(), [], True).render() == "foo"
+
+    def test_render_problems_found_lists_them_under_summary(
+        self, get_summary: None
+    ) -> None:
+        assert (
+            VerificationComment(certificate_document(), ["bar", "baz"], False).render()
+            == "foo\n\n- bar\n- baz"
+        )
+
+    @pytest.mark.parametrize(
+        "generated,expected", [(True, VerificationComment.ENCOURAGEMENT), (False, "")]
+    )
+    def test_render_no_certificate_returns_encouragement_when_generated(
+        self, generated: bool, expected: str
+    ) -> None:
+        assert VerificationComment(None, [], generated).render() == expected

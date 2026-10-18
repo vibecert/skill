@@ -28,12 +28,13 @@ Run them with `uv run --project <this>/scripts`.
 | `vibecert-publish` | the certificate, a directory | `<id>/score.json`, ready to submit |
 | `vibecert-accept` | a submitted checkout, its changed paths and submitter | the identifier, or every problem |
 | `vibecert-build` | the site checkout, a directory | every page, score and badge, and the root page |
-| `vibecert-verify` | a pull request's checkout, its branch and base | the identifier, or every reason its certificate does not pass |
+| `vibecert-verify` | a pull request's checkout, its branch and base | the identifier, or every reason its certificate does not pass, or a pull request comment |
 
 `vibecert-publish` writes a file and nothing else.
 Submitting it is the skill's job, as a pull request to the site, and `SKILL.md` holds that sequence.
 The site's workflows run `vibecert-accept` on each pull request and `vibecert-build` on every push to `main`.
 `vibecert-verify` passes only a certified score at or above the threshold whose `head` is the checked-out commit.
+With `--comment` it never fails, and prints the badge and any problems, an encouragement when commits credit a generative tool but no certificate exists, or nothing.
 
 ## Module map
 

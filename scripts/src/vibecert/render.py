@@ -175,3 +175,45 @@ class CertificateSnippets:
             if self.__document.score is None
             else f"{self.__document.score}/3"
         )
+
+
+class VerificationComment:
+    """A pull request comment on the branch's certificate, or the lack of one.
+
+    Args:
+        document (CertificateDocument | None): The branch's certificate, if any.
+        problems (list[str]): Every reason the certificate does not pass.
+        generated (bool): Whether the branch's commits credit a generative tool.
+
+    """
+
+    ENCOURAGEMENT: str = (
+        "This branch credits generative tooling but has no VibeCert certificate.\n"
+        "[Score it with VibeCert](https://l.martinchapman.co.uk/vibecert) "
+        "to show how that tooling was used."
+    )
+
+    def __init__(
+        self, document: CertificateDocument | None, problems: list[str], generated: bool
+    ) -> None:
+        self.__document: CertificateDocument | None = document
+        self.__problems: list[str] = problems
+        self.__generated: bool = generated
+
+    def render(self) -> str:
+        """Return the comment, or nothing when there is nothing to say.
+
+        Returns:
+            str: Markdown, or an empty string.
+
+        """
+        if self.__document is None:
+            return self.ENCOURAGEMENT if self.__generated else ""
+        return "\n\n".join(
+            [CertificateSnippets(self.__document).get_summary()]
+            + (
+                ["\n".join(f"- {problem}" for problem in self.__problems)]
+                if self.__problems
+                else []
+            )
+        )

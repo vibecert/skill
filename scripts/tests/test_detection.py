@@ -2,6 +2,7 @@ import pytest
 
 from vibecert.detection import (
     CheckRegistry,
+    GenerativeCommits,
     ImportPatterns,
     Languages,
     RiskSeverity,
@@ -126,3 +127,20 @@ class TestRiskSeverity:
         self, findings: list[str], expected: bool
     ) -> None:
         assert RiskSeverity.is_severe(findings) is expected
+
+
+class TestGenerativeCommits:
+    @pytest.mark.parametrize(
+        "message,expected",
+        [
+            ("feat: foo\n\nCo-Authored-By: Claude <noreply@anthropic.com>", True),
+            ("feat: foo\n\nGenerated with [Claude Code](https://foo.bar)", True),
+            ("feat: foo\n\nco-authored-by: Copilot <foo@bar.baz>", True),
+            ("feat: foo\n\nCo-authored-by: Foo Bar <foo@bar.baz>", False),
+            ("feat: add claude support", False),
+        ],
+    )
+    def test_pattern_commit_message_matches_generative_tools(
+        self, message: str, expected: bool
+    ) -> None:
+        assert (GenerativeCommits.PATTERN.search(message) is not None) is expected
