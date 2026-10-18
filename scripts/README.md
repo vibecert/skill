@@ -20,6 +20,7 @@ The site runs two more commands.
 `vibecert-verify` fails a pull request whose branch has no current certificate, or one scoring below `--threshold`.
 It must run on the pull request's own head with full history, since `actions/checkout` otherwise checks out a merge commit.
 With `--comment` it never fails, and instead prints markdown for a pull request comment: the badge, an encouragement when commits credit a generative tool but no certificate exists, or nothing.
+[`vibecert/action`](https://github.com/vibecert/action) posts that comment on each pull request, with `uses: vibecert/action@v1.0.0`.
 
 ```yaml
 on: pull_request
