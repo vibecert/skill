@@ -6,14 +6,17 @@ disallowed-tools: Edit, Write, NotebookEdit
 ---
 
 - You do not need to print any output either during or after your working documenting your thinking or actions. Always minimise token usage.
-- You will be asked to score the practice behind a Git branch. Assess the current branch against `main`, unless another base is given.
+- You will be asked to score the practice behind a Git branch. Assess the current branch against the branch it was branched from, unless another base is given.
+  Where the branch has an open pull request, its base is the pull request's (`gh pr view --json baseRefName`).
+  Otherwise take it from the branch name where that follows the `<base>--<branch>` convention, and fall back to the repository's default branch; ask the author if it is still unclear.
+  The pull request action looks a certificate up against the pull request's base, and a certificate's identifier is fixed by its merge base, so a branch scored against any other base never gets its badge.
 - Where the work spans several repositories, run everything below once per repository, passing each one's path to `--repo`. Each gets its own certificate. Never merge two certificates, or their scores, by hand.
 - **Important** you must not modify the code you are scoring. Only read it.
 - Below, `<tool>` is `uv run --project ~/.claude/skills/vibecert/scripts`, `<bundle>` is `<scratch>/vibecert.json` and `<scratch>` is your scratch directory.
 
 # Gathering evidence
 
-- Collect the evidence with `<tool> vibecert --repo . --out <bundle>`.
+- Collect the evidence with `<tool> vibecert --repo . --base origin/<base> --out <bundle>`.
 - A session counts towards a repository if it started there or wrote files there, so work done in one repository from a session started in another is still found.
 - **Important** always write to a file. The bundle runs to tens of thousands of tokens and must not be printed, nor read whole.
 - If the collector finds no sessions, say so and stop. There is nothing to score.
