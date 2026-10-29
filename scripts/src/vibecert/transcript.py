@@ -196,6 +196,18 @@ class TranscriptSession:
                     "",
                 )
             ]
+        if result.get("type") == "create" and result.get("filePath"):
+            return [
+                EditHunk(
+                    self.get_identifier(),
+                    timestamp,
+                    "tool",
+                    Json.as_text(result["filePath"]),
+                    Json.as_text(result.get("content")).splitlines(),
+                    0,
+                    "",
+                )
+            ]
         return []
 
     def _bash_edits(

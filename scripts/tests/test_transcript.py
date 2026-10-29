@@ -140,6 +140,25 @@ class TestTranscriptSession:
             == "tool"
         )
 
+    def test_get_edits_created_file_returns_content_lines(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        assert session_of(
+            mocker,
+            [
+                {
+                    "toolUseResult": {
+                        "type": "create",
+                        "filePath": "/repo/foo.py",
+                        "content": "alpha\nbeta\n",
+                        "structuredPatch": [],
+                    }
+                }
+            ],
+        ).get_edits() == [
+            EditHunk("session", "", "tool", "/repo/foo.py", ["alpha", "beta"], 0, "")
+        ]
+
     def test_get_edits_no_edit_result_returns_empty(
         self, mocker: pytest_mock.MockerFixture
     ) -> None:
