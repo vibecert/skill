@@ -70,9 +70,9 @@ not a score.
 - Submit `score.json` alone, from a branch on the author's fork, as a pull request. Do not clone the site or the fork, and never force push.
 
 ```
-gh repo fork <repository> --clone=false
 login=$(gh api user --jq .login)
 fork="$login/$(basename <repository>)"
+gh api "repos/$fork" --jq .parent.full_name >/dev/null 2>&1 || gh repo fork <repository> --clone=false
 gh repo sync "$fork"
 gh api --method DELETE "repos/$fork/git/refs/heads/vibecert/<id>" >/dev/null 2>&1 || true
 base=$(gh api "repos/$fork/git/ref/heads/main" --jq .object.sha)
@@ -90,6 +90,7 @@ gh pr create --repo <repository> --head "$login:vibecert/<id>" --base main \
   --title "feat: $verb certificate <id>" --body "Submitted with VibeCert."
 ```
 
+- The fork is created only where the author has none, as creating one is the step most likely to need the author's permission.
 - `gh repo fork` returns before a new fork is ready, so where the next command reports 404, wait a few seconds and run it again.
 - `gh repo sync` only fast-forwards the fork's `main`. If it reports divergence, tell the author and stop; do not pass `--force`.
 - Deleting `vibecert/<id>` first closes any earlier submission of the same certificate, so a rescore always submits from the site's current `main`.
