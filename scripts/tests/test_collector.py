@@ -38,6 +38,14 @@ class TestEvidenceCollector:
     ) -> None:
         assert collector.collect().activity.human_messages == 0
 
+    def test_collect_base_merged_after_commits_starts_window_at_first_commit(
+        self, collector: EvidenceCollector, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        mocker.patch.object(
+            GitRepository, "get_commit_time", return_value="2026-01-03T00:00:00+00:00"
+        )
+        assert collector.collect().branch.window.start == "2026-01-01T00:00:00+00:00"
+
     def test_collect_edits_in_another_repository_returns_only_own_lines(
         self, collector: EvidenceCollector, mocker: pytest_mock.MockerFixture
     ) -> None:
