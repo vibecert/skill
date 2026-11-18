@@ -372,7 +372,8 @@ class EvidenceCollector:
     def _window_start(self, merge_base: str) -> str:
         return min(
             [
-                self.__repository.get_commit_time(merge_base),
+                self.__repository.get_branch_created(self.__repository.get_branch())
+                or self.__repository.get_commit_time(merge_base),
                 *(
                     commit.timestamp
                     for commit in self.__repository.get_commits(merge_base)

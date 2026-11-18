@@ -140,6 +140,34 @@ class GitRepository:
         """
         return self._run("show", "-s", "--format=%aI", sha)
 
+    def get_branch_created(self, branch: str) -> str:
+        """Return when a branch was created, as its reflog records it.
+
+        Args:
+            branch (str): The branch to look up.
+
+        Returns:
+            str: The creation time in ISO 8601, or an empty string when the
+                reflog does not record it.
+
+        """
+        return next(
+            (
+                line.split("\x1f")[0].split("@{")[-1].rstrip("}")
+                for line in reversed(
+                    self._try_run(
+                        "reflog",
+                        "show",
+                        "--date=iso-strict",
+                        "--format=%gd%x1f%gs",
+                        "refs/heads/" + branch,
+                    ).splitlines()
+                )
+                if line.split("\x1f")[-1].startswith("branch: Created from")
+            ),
+            "",
+        )
+
     def is_dirty(self) -> bool:
         """Report whether the working tree carries uncommitted changes.
 

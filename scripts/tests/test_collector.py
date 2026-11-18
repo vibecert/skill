@@ -47,6 +47,27 @@ class TestEvidenceCollector:
         )
         assert collector.collect().branch.window.start == "2026-01-01T00:00:00+00:00"
 
+    @pytest.mark.parametrize(
+        "created,expected",
+        [
+            ("2025-12-31T00:00:00+00:00", "2025-12-31T00:00:00+00:00"),
+            ("2026-01-02T00:00:00+00:00", "2026-01-01T00:00:00+00:00"),
+        ],
+    )
+    def test_collect_branch_creation_recorded_starts_window_at_earliest(
+        self,
+        collector: EvidenceCollector,
+        mocker: pytest_mock.MockerFixture,
+        created: str,
+        expected: str,
+    ) -> None:
+        mocker.patch.object(GitRepository, "get_branch_created", return_value=created)
+        get_commit_time: unittest.mock.MagicMock = mocker.patch.object(
+            GitRepository, "get_commit_time", return_value="2025-01-01T00:00:00+00:00"
+        )
+        assert collector.collect().branch.window.start == expected
+        get_commit_time.assert_not_called()
+
     def test_collect_edits_in_another_repository_returns_only_own_lines(
         self, collector: EvidenceCollector, mocker: pytest_mock.MockerFixture
     ) -> None:

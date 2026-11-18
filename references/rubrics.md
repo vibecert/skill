@@ -17,7 +17,8 @@ These terms are used throughout and are not redefined per metric.
 Branch under assessment: the commits reachable from `HEAD` but not from the merge base with the branch it was taken from, together with uncommitted changes to tracked files.
 Untracked files are not part of the branch and are excluded, since output and assets are not meant to be tracked in the first place.
 
-Session: a Claude Code transcript whose working directory matches the repository and whose timestamps fall inside the window bounded by the first and last commit on the branch.
+Session: a Claude Code transcript whose working directory matches the repository and whose timestamps overlap the window from the branch's creation, as its reflog records it, or its first commit if earlier, to the time of collection.
+Where the reflog does not record the creation, the merge base's commit time stands in for it.
 
 Human message: a transcript entry of type `user` whose `origin.kind` is `human`.
 Hook output, tool results, system reminders and subagent traffic are not human messages and are excluded from every metric.

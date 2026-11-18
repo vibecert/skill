@@ -70,6 +70,37 @@ class TestGitRepository:
     ) -> None:
         assert repository.get_remote() == "git@github.com:foo/bar.git"
 
+    @pytest.mark.parametrize(
+        "reflog,expected",
+        [
+            (
+                "foo@{2026-01-03T00:00:00Z}\x1fcommit: bar\n"
+                "foo@{2026-01-02T00:00:00+01:00}\x1fbranch: Created from main",
+                "2026-01-02T00:00:00+01:00",
+            ),
+            ("foo@{2026-01-03T00:00:00Z}\x1fclone: from baz", ""),
+            ("", ""),
+        ],
+    )
+    def test_get_branch_created_reflog_returns_creation_time(
+        self,
+        repository: GitRepository,
+        git_mocks: GitMocks,
+        reflog: str,
+        expected: str,
+    ) -> None:
+        git_mocks._run.side_effect = lambda *arguments: (
+            reflog if arguments[0] == "reflog" else ""
+        )
+        assert repository.get_branch_created("foo") == expected
+        git_mocks._run.assert_called_once_with(
+            "reflog",
+            "show",
+            "--date=iso-strict",
+            "--format=%gd%x1f%gs",
+            "refs/heads/foo",
+        )
+
     def test_get_commit_time_known_sha_returns_date(
         self, repository: GitRepository
     ) -> None:
