@@ -6,6 +6,7 @@ import pytest_mock
 
 from vibecert.collector import EvidenceCollector
 from vibecert.git_repository import GitRepository
+from vibecert.guidelines import GuidelineIndex
 from vibecert.transcript import TranscriptStore
 from vibecert.vibecert_types import EditHunk
 
@@ -45,6 +46,27 @@ class TestEvidenceCollector:
             GitRepository, "get_commit_time", return_value="2026-01-03T00:00:00+00:00"
         )
         assert collector.collect().branch.window.start == "2026-01-01T00:00:00+00:00"
+
+    @pytest.mark.parametrize(
+        "created,expected",
+        [
+            ("2025-12-31T00:00:00+00:00", "2025-12-31T00:00:00+00:00"),
+            ("2026-01-02T00:00:00+00:00", "2026-01-01T00:00:00+00:00"),
+        ],
+    )
+    def test_collect_branch_creation_recorded_starts_window_at_earliest(
+        self,
+        collector: EvidenceCollector,
+        mocker: pytest_mock.MockerFixture,
+        created: str,
+        expected: str,
+    ) -> None:
+        mocker.patch.object(GitRepository, "get_branch_created", return_value=created)
+        get_commit_time: unittest.mock.MagicMock = mocker.patch.object(
+            GitRepository, "get_commit_time", return_value="2025-01-01T00:00:00+00:00"
+        )
+        assert collector.collect().branch.window.start == expected
+        get_commit_time.assert_not_called()
 
     def test_collect_edits_in_another_repository_returns_only_own_lines(
         self, collector: EvidenceCollector, mocker: pytest_mock.MockerFixture
@@ -94,3 +116,36 @@ class TestEvidenceCollector:
             EvidenceCollector._existing({"/no/such/rules.md"}, pathlib.Path("/repo"))
             == []
         )
+
+    def test_existing_path_through_symlink_returns_resolved_path(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        (tmp_path / "rules").mkdir()
+        (tmp_path / "rules" / "FOO.md").write_text("foo")
+        (tmp_path / "link").symlink_to(tmp_path / "rules")
+        assert EvidenceCollector._existing(
+            {str(tmp_path / "link" / "FOO.md")}, tmp_path
+        ) == [str(tmp_path / "rules" / "FOO.md")]
+
+    def test_guideline_info_guideline_listed_through_symlink_reports_in_context(
+        self,
+        collector: EvidenceCollector,
+        mocker: pytest_mock.MockerFixture,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        (tmp_path / "rules").mkdir()
+        (tmp_path / "rules" / "FOO.md").write_text("foo")
+        (tmp_path / "link").symlink_to(tmp_path / "rules")
+        mocker.patch.object(
+            GuidelineIndex, "get_available", return_value=[tmp_path / "link" / "FOO.md"]
+        )
+        mocker.patch.object(GuidelineIndex, "get_applicable", return_value=[])
+        session: unittest.mock.MagicMock = mocker.MagicMock()
+        session.get_guidelines_in_context.return_value = {
+            str(tmp_path / "rules" / "FOO.md")
+        }
+        session.get_guidelines_read.return_value = set()
+        assert [
+            guideline.in_context
+            for guideline in collector._guideline_info([session], ["foo.py"])
+        ] == [True]

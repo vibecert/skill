@@ -284,7 +284,7 @@ class EvidenceCollector:
             GuidelineInfo(
                 path=str(guideline),
                 applies=guideline in index.get_applicable(changed),
-                in_context=str(guideline) in reached,
+                in_context=str(guideline.resolve()) in reached,
             )
             for guideline in index.get_available()
         ]
@@ -359,7 +359,7 @@ class EvidenceCollector:
     def _existing(paths: set[str], root: pathlib.Path) -> list[str]:
         return sorted(
             {
-                str(candidate)
+                str(candidate.resolve())
                 for path in paths
                 for resolved in (pathlib.Path(path).expanduser(),)
                 for candidate in (
@@ -372,7 +372,8 @@ class EvidenceCollector:
     def _window_start(self, merge_base: str) -> str:
         return min(
             [
-                self.__repository.get_commit_time(merge_base),
+                self.__repository.get_branch_created(self.__repository.get_branch())
+                or self.__repository.get_commit_time(merge_base),
                 *(
                     commit.timestamp
                     for commit in self.__repository.get_commits(merge_base)

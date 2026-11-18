@@ -146,6 +146,10 @@ class TranscriptSession:
             for entry in self.__entries
             if Json.as_dict(entry.get("attachment")).get("type") == "instructions"
             for file in Json.as_list(Json.as_dict(entry.get("attachment")).get("files"))
+        } | {
+            Json.as_text(Json.as_dict(entry.get("attachment")).get("path"))
+            for entry in self.__entries
+            if Json.as_dict(entry.get("attachment")).get("type") == "nested_memory"
         }
 
     def _timestamps(self) -> list[str]:

@@ -208,6 +208,19 @@ class TestTranscriptSession:
             ],
         ).get_guidelines_in_context() == {"/rules/FOO.md"}
 
+    def test_get_guidelines_in_context_nested_memory_attachment_returns_path(
+        self, mocker: pytest_mock.MockerFixture
+    ) -> None:
+        assert session_of(
+            mocker,
+            [
+                {
+                    "type": "attachment",
+                    "attachment": {"type": "nested_memory", "path": "/rules/BAR.md"},
+                }
+            ],
+        ).get_guidelines_in_context() == {"/rules/BAR.md"}
+
     def test_parse_malformed_line_returns_none(self) -> None:
         assert TranscriptSession._parse("{not json") is None
 
