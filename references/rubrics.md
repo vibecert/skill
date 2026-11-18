@@ -44,7 +44,7 @@ A skill is not a guideline either.
 It is a procedure for a task rather than a statement of coding practice.
 
 A guideline is available when it exists and applies to the change.
-It is in context when it was injected at session start or read during the session.
+It is in context when it was injected at session start, injected when a file it governs was first touched, or read during the session.
 The two differ in practice: `~/.claude/rules/INDEX.md` directs the reader to a topic file, so a topic file covering the language or tool in the diff, never read, is available and not in context.
 
 ## Scoring procedure
