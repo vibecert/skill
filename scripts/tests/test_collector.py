@@ -6,6 +6,7 @@ import pytest_mock
 
 from vibecert.collector import EvidenceCollector
 from vibecert.git_repository import GitRepository
+from vibecert.guidelines import GuidelineIndex
 from vibecert.transcript import TranscriptStore
 from vibecert.vibecert_types import EditHunk
 
@@ -94,3 +95,36 @@ class TestEvidenceCollector:
             EvidenceCollector._existing({"/no/such/rules.md"}, pathlib.Path("/repo"))
             == []
         )
+
+    def test_existing_path_through_symlink_returns_resolved_path(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        (tmp_path / "rules").mkdir()
+        (tmp_path / "rules" / "FOO.md").write_text("foo")
+        (tmp_path / "link").symlink_to(tmp_path / "rules")
+        assert EvidenceCollector._existing(
+            {str(tmp_path / "link" / "FOO.md")}, tmp_path
+        ) == [str(tmp_path / "rules" / "FOO.md")]
+
+    def test_guideline_info_guideline_listed_through_symlink_reports_in_context(
+        self,
+        collector: EvidenceCollector,
+        mocker: pytest_mock.MockerFixture,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        (tmp_path / "rules").mkdir()
+        (tmp_path / "rules" / "FOO.md").write_text("foo")
+        (tmp_path / "link").symlink_to(tmp_path / "rules")
+        mocker.patch.object(
+            GuidelineIndex, "get_available", return_value=[tmp_path / "link" / "FOO.md"]
+        )
+        mocker.patch.object(GuidelineIndex, "get_applicable", return_value=[])
+        session: unittest.mock.MagicMock = mocker.MagicMock()
+        session.get_guidelines_in_context.return_value = {
+            str(tmp_path / "rules" / "FOO.md")
+        }
+        session.get_guidelines_read.return_value = set()
+        assert [
+            guideline.in_context
+            for guideline in collector._guideline_info([session], ["foo.py"])
+        ] == [True]

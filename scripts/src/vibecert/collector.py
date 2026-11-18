@@ -284,7 +284,7 @@ class EvidenceCollector:
             GuidelineInfo(
                 path=str(guideline),
                 applies=guideline in index.get_applicable(changed),
-                in_context=str(guideline) in reached,
+                in_context=str(guideline.resolve()) in reached,
             )
             for guideline in index.get_available()
         ]
@@ -359,7 +359,7 @@ class EvidenceCollector:
     def _existing(paths: set[str], root: pathlib.Path) -> list[str]:
         return sorted(
             {
-                str(candidate)
+                str(candidate.resolve())
                 for path in paths
                 for resolved in (pathlib.Path(path).expanduser(),)
                 for candidate in (
